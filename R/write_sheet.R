@@ -116,6 +116,7 @@ write_sheet <- function(x, path, sheet, at = NULL, after = NULL, header = "names
       dclass[starts[[j]] + n_header + seq_len(nrow(x))] <- date_class(x[[j]])
     }
     p <- new_cell_plan(sh$name)
+    if (!is.null(sh$note)) p$messages <- list(sh$note)
     edit <- c(parts[1:4], list(
       enc2utf8(c(sh$name, after)),
       as.integer(c(1L, parts[[6]][1:2])),
@@ -135,6 +136,7 @@ write_sheet <- function(x, path, sheet, at = NULL, after = NULL, header = "names
   }
 
   p <- new_cell_plan(sh$name)
+  if (!is.null(sh$note)) p$messages <- list(sh$note)
   add_table(p, x, at_cell[[1]], at_cell[[2]], args$header, args$values, args$na, formats, styles, NULL,
             TRUE, "`x`", call)
   apply_edit_styles(p, styles$ranges)

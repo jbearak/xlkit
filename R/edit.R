@@ -81,7 +81,15 @@ check_edit_sheet <- function(sheet, info, path, call) {
     return(list(name = names[[hit]], new = FALSE))
   }
   check_sheet_names(c(sheet), call)
-  list(name = sheet, new = TRUE)
+  # A new sheet in an existing workbook is often a misspelled name; the
+  # note is shown just before writing, once every check has passed.
+  note <- NULL
+  if (length(names)) {
+    note <- paste0(basename(path), " has no sheet ", dquote(sheet), ", so it is added.")
+    guess <- closest(sheet, names)
+    if (!is.null(guess)) note <- c(note, i = paste0("Did you mean ", dquote(guess), "?"))
+  }
+  list(name = sheet, new = TRUE, note = note)
 }
 
 check_after <- function(after, info, path, call) {

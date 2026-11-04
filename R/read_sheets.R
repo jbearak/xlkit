@@ -3,7 +3,8 @@
 #' Reads each sheet of a workbook into a tibble, with the same
 #' [read_xlsx()] arguments for every sheet.
 #'
-#' Chart sheets are skipped unless named. Each tibble keeps its own
+#' Chart sheets are skipped (naming one in `sheets` is an error, as in
+#' `read_xlsx()`). Each tibble keeps its own
 #' [xlsx_problems()]. To stack sheets with the same columns into one
 #' table, use `dplyr::bind_rows(all, .id = "sheet")`.
 #'

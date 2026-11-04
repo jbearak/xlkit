@@ -36,6 +36,13 @@ xlkit sits next to [datakit](https://github.com/jbearak/dta-parser),
 which translates do-files to R: [docs/stata.md](docs/stata.md) gives the
 xlkit line for each `import excel`, `export excel` and `putexcel` line.
 
+Two judges, Claude Sonnet and GPT Terra, compared xlkit's design and
+documentation with those of readxl and writexl, openxlsx2, pandas,
+openpyxl, polars, XLSX.jl, SheetJS, ExcelJS and Stata's Excel commands,
+blind to which library was which, on 13 fixed tasks. Both scored
+xlkit higher against every one of them. The rubric, the prompts and
+every response are in [docs/judging](docs/judging/round-3/README.md).
+
 ## Install
 
 ```r

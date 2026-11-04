@@ -23,7 +23,8 @@ Reads each sheet of a workbook into a tibble, with the same
 \code{\link[=read_xlsx]{read_xlsx()}} arguments for every sheet.
 }
 \details{
-Chart sheets are skipped unless named. Each tibble keeps its own
+Chart sheets are skipped (naming one in \code{sheets} is an error, as in
+\code{read_xlsx()}). Each tibble keeps its own
 \code{\link[=xlsx_problems]{xlsx_problems()}}. To stack sheets with the same columns into one
 table, use \code{dplyr::bind_rows(all, .id = "sheet")}.
 }
