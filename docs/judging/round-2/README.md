@@ -47,5 +47,12 @@ sessions; those scores are ignored.
 Terra gave task 3 a correctness score of 2 because the example workbook
 had `Sales 2024` as the fourth sheet while the scenario says third. The
 example workbook's sheets are now `Summary`, `Sales 2023`,
-`Sales 2024`, `Regions` and `Notes`, so it is the third. No other
-change was made after the round.
+`Sales 2024`, `Regions` and `Notes`, so it is the third.
+
+Review with GPT Sol then corrected four Stata translations in
+`docs/stata.md` (the 1960 date origin in `putexcel`, `datestring()`
+writing text, matrices without `names`, and `if` dropping missing
+values), added `merge` to `write_xlsx()`'s reference, allowed resizing
+an Excel table in ADR 0006, and made `bundle.py` blind Julia's `XLSX`
+and SheetJS's `xlsx` in imports. The release round judges the docs as
+they are then.
