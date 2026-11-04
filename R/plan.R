@@ -165,6 +165,10 @@ plan_workbook <- function(sheets, args, formats, widths, styles, merges, call) {
         # Size the column for the format its cells will show, which a
         # column style's `format` overrides.
         shown_fmt <- if (!is.null(styles$columns[[name]]$format)) styles$columns[[name]]$format else numfmt
+        if (is.numeric(x) && !is_labelled(x)) {
+          pm <- percent_message(label(paste0("`", name, "`")), cells$num[cells$kind == W_NUMBER], shown_fmt)
+          if (!is.null(pm)) messages[[length(messages) + 1]] <- pm
+        }
         w <- max(hw, cells_width(cells, shown_fmt))
         col_width[j] <- max(if (j <= length(col_width) && !is.na(col_width[j])) col_width[j] else 0, w)
       }

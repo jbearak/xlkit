@@ -22,6 +22,10 @@
 #' | [xl_formula()] | formulas |
 #' | list | an error naming the column |
 #'
+#' Read back with [read_xlsx()], a factor is character (give its levels
+#' again with `factor(x, levels = ...)`), `hms` and `difftime` columns are
+#' `hms`, and a `POSIXct` is in UTC with the same clock time.
+#'
 #' `NA` is a blank cell. Text is always written as text: `"=A1+1"` is not
 #' a formula and `"https://..."` is not a link unless marked with
 #' [xl_formula()].
@@ -49,13 +53,16 @@
 #'   as text, `"codes"` the codes.
 #' @param formats Excel number formats by column name, such as
 #'   `c(share = "0.0%", amount = "#,##0")`. The values are unchanged;
-#'   only how Excel shows them.
+#'   only how Excel shows them. A percent format multiplies by 100, so a
+#'   column whose numbers are all 1 or more (or -1 or less) with one gets
+#'   a message.
 #' @param widths `"auto"` fits each column to its contents, up to 60
 #'   characters; one number sets every column; numbers named by column,
 #'   such as `c(notes = 80)`, set those and fit the rest.
 #' @param freeze `TRUE` keeps the header row in view (on a sheet with one
 #'   table); `FALSE` does not; a cell such as `"B2"` freezes the rows above
-#'   it and the columns left of it.
+#'   it and the columns left of it, on every sheet written, even one with
+#'   several tables.
 #' @param filter `TRUE` adds filter buttons to the header row. Excel
 #'   allows one filter per sheet, so it needs one table on each sheet.
 #' @param header_style The header cells' style, from [xl_style()]; `NULL`
@@ -66,7 +73,8 @@
 #'   named by the ranges to merge, `list("A1:F1" = xl_style(align =
 #'   "center"))`. Excel keeps only a merged range's top-left value, so
 #'   the other cells must be empty.
-#' @param gap Blank rows between tables on one sheet.
+#' @param gap Blank rows between one table's last row and the next
+#'   table's title (or header) on the same sheet.
 #' @param na Text to write for `NA`; `""` leaves the cell empty.
 #' @param replace `TRUE` replaces `path` if it exists; `FALSE` stops
 #'   instead. The new file is written beside the old one and moved over

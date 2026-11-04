@@ -43,7 +43,9 @@
 #'   `B2 = "Results for 2024"`.
 #' @param styles A list of styles from [xl_style()], named by cell or
 #'   range, such as `list(B2 = xl_style(bold = TRUE, size = 14))`. A style
-#'   changes only what it sets; the cell keeps the rest of its format.
+#'   changes only what it sets; the cell keeps the rest of its format. A
+#'   percent format on cells whose numbers are all 1 or more (or -1 or
+#'   less) gets a message naming them.
 #' @param merge Ranges to merge, such as `"B2:F2"`, or a list of styles
 #'   named by the ranges to merge. Excel keeps only a merged range's
 #'   top-left value, so the other cells must be empty.
@@ -115,7 +117,9 @@ write_cells <- function(path, sheet, ..., styles = NULL, merge = NULL) {
       p$pieces <- c(p$pieces, r - 1L, c - 1L, length(v), 1L, 0L)
     }
   }
-  apply_edit_styles(p, c(ranges, Filter(function(m) !is.null(m$style), merges)))
+  styled <- c(ranges, Filter(function(m) !is.null(m$style), merges))
+  apply_edit_styles(p, styled)
+  p$messages <- c(p$messages, percent_range_messages(p$blocks, styled))
   parts <- edit_parts(p, 0L, merges = merges)
   src <- where$full
   if (!where$exists) {

@@ -56,6 +56,14 @@ at <https://github.com/jbearak/xlkit/issues> with the output of
 xlkit imports only rlang, tibble, vctrs and hms. It reads and writes
 dtaparser's labelled columns without depending on dtaparser.
 
+dtaparser reads and writes Stata `.dta` files, and
+[Variable labels and value labels](#variable-labels-and-value-labels)
+uses it. xlkit does not need it otherwise. To install it:
+
+```r
+install.packages("dtaparser", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+```
+
 Check the install:
 
 ```r
@@ -196,6 +204,16 @@ is enough: `header = 5` reads from row 5 down, as wide as the data.
 sales <- read_xlsx(path, sheet = "Sales 2024", header = 5)
 ```
 
+A header row below the last row with data stops, and says where the
+data is. The last row with data is a header with no rows below it.
+
+```r
+read_xlsx(path, sheet = "Sales 2024", header = 50)
+#> Error in `read_xlsx()`:
+#> ! `header = 50`, but the last row with data in sheet "Sales 2024" is 40.
+#> ℹ Its data is in B1:F40.
+```
+
 If you read such a sheet without either, xlkit takes the title in row 1
 as the header and warns:
 
@@ -245,6 +263,12 @@ and again in C1, nothing in D1, and `Share %` in E1.
 | `"lower"`, `"upper"` | `"unique"`, then lower or upper case; add one to another rule with `c("stata", "lower")` |
 | a function | the function's result on the header text, made unique |
 
+`"snake"` cleans names but does not shorten them:
+`Number of children ever born (living and dead)` becomes
+`number_of_children_ever_born_living_and_dead`, 44 characters. Only
+`"stata"` shortens names, cutting them at 32 characters. For shorter names of your own, use a function or
+`names(df) <- ...`.
+
 When xlkit has to change a header to make a name, because it is blank
 or repeats another, it says which:
 
@@ -256,8 +280,24 @@ df <- read_xlsx(path, sheet = "Headers")
 #> ℹ Choose another rule with `names =`, or set your own with `names(df) <- ...`.
 ```
 
-The rules you choose with `names` change names without a message; only
-these repairs get one.
+The rules you choose with `names` change names without a message,
+unless they make two names equal. Then the later one gets `_` and its
+column letter, as a repeat does, and the message says why. `"stata"`
+can do this by cutting two long headers to the same 32 characters:
+
+```r
+long <- data.frame("Children ever born to the woman, living" = 3,
+                   "Children ever born to the woman, dead" = 1, check.names = FALSE)
+write_xlsx(long, "long.xlsx")
+df <- read_xlsx("long.xlsx", names = "stata")
+#> New names:
+#> • B1 "Children ever born to the woman, dead" is `Children_ever_born_to_the_woma_B` (cut to 32 characters, it would repeat A1)
+#> ℹ Choose another rule with `names =`, or set your own with `names(df) <- ...`.
+```
+
+When a rule makes two names equal without a cut, such as `"Share %"`
+and `"Share #"` both becoming `Share`, the reason is `(it would repeat
+A1 after the rule)`.
 
 When a name differs from its header text, the text is kept as the
 column's variable label, so you can see where a name came from (a
@@ -337,7 +377,11 @@ is not a column stops with the column names.
 with zeros, so `2139` formatted `00000` reads as `"02139"`. A code typed
 as a number without such a format has no leading zero anywhere in the
 file, and no reader can restore it; if the codes have a known width,
-pad them after reading: `formatC(as.integer(df$zip), width = 5, flag = "0")`. Other numbers
+pad them after reading: `formatC(as.integer(df$zip), width = 5, flag = "0")`.
+The same line mends a column that mixes text and numbers. Such a column
+is text, the cells typed as text keep their zeros (`"02139"`) and the
+numbers typed without a format do not (`"2139"`). `formatC()` pads
+both to `"02139"`, as long as every code is digits only. Other numbers
 are written in full, up to 15 significant digits (`0.1`, not
 `0.1000000000000000055`), and dates as `2024-03-01`.
 
@@ -355,6 +399,12 @@ xlsx_problems(df)
 
 `cell` and `row` are as Excel shows them, so you can find the cell in
 the workbook. A tibble without problems gives zero rows.
+
+`read_xlsx()` keeps the problems in an attribute of the tibble it
+returns, `xlkit_problems`, which `xlsx_problems()` reads. Operations
+that drop attributes, such as some dplyr verbs, drop it too, so call
+`xlsx_problems()` on the tibble `read_xlsx()` returned, before you
+change it.
 
 ## Dates and times
 
@@ -396,7 +446,28 @@ read_xlsx(path, types = c(day = "number", clock = "number"))
 #> 3 45657 2024-12-31 23:59:59 1.000
 ```
 
-To read every date as its number, use `dates = FALSE`.
+A 1904 workbook stores each date as a number 1,462 lower than a 1900
+workbook does, because it counts from 1904. Both files give the same
+dates, but `"number"` shows the difference:
+
+```r
+read_xlsx(xlkit_example("dates1904.xlsx"), types = c(day = "number"))$day
+#> [1] 43844 43889 44195
+```
+
+To read every date as its number, use `dates = FALSE`. Each column's
+type is then guessed as for any numbers. A date column becomes integer
+(whole day counts), and date-time and time columns become double:
+
+```r
+read_xlsx(path, dates = FALSE)
+#> # A tibble: 3 × 3
+#>     day  stamp clock
+#>   <int>  <dbl> <dbl>
+#> 1 45306 45306. 0.354
+#> 2 45351 45352. 0.712
+#> 3 45657 45658. 1.000
+```
 
 A date typed as text (`"2024-03-01"`) stays text unless you ask for
 `"date"`. A column of dates with a stray text cell, such as `unknown`,
@@ -493,6 +564,20 @@ Each column type becomes:
 | dtaparser or haven labelled | its value labels, as text (see [labels](#variable-labels-and-value-labels)) |
 | list | an error naming the column |
 
+Reading the file back with `read_xlsx()` gives the same columns, apart
+from what Excel does not store:
+
+- A factor reads back as character, since Excel holds only its labels.
+  The levels are not in the file, so give them again:
+  `factor(df$size, levels = c("small", "large"))`.
+- `hms` and `difftime` columns both read back as `hms`, the same length
+  of time. An `hms` is a `difftime` in seconds, so a `difftime` in
+  minutes or days comes back in seconds, shown as hours, minutes and
+  seconds.
+- A `POSIXct` reads back in UTC, with the same clock time.
+- A labelled column reads back as its labels (or its codes), as text or
+  numbers, without the value labels.
+
 `NA` is a blank cell; `na = "NA"` writes text instead. Text is always
 written as text: `"=A1+1"` is not a formula and `"https://..."` is not
 a link unless you say so with `xl_formula()`. `sheet` names the
@@ -529,7 +614,9 @@ write_xlsx(list(Summary = summary, Detail = detail, Notes = notes), "report.xlsx
 
 To put several tables on one sheet, make that sheet a named list too.
 Each name is written as a title above its table, and the tables are
-stacked with one blank row between them (`gap = 2` for two):
+stacked. `gap` counts the blank rows between one table's last row and
+the next table's title (or its header, if it has no title). The default
+is 1; `gap = 2` leaves two blank rows:
 
 ```r
 write_xlsx(
@@ -559,6 +646,11 @@ forms. To place a table at an exact cell, use `write_sheet(x, path,
 sheet, at = "D2")` (see [Fill in an existing
 workbook](#fill-in-an-existing-workbook)).
 
+No header row belongs to every table on a sheet of stacked tables, so
+`freeze = TRUE` freezes nothing there. `freeze = "B2"` freezes at that
+cell on every sheet written, stacked tables or not: the rows above it
+and the columns left of it stay in view.
+
 ## Format the output
 
 ```r
@@ -581,6 +673,21 @@ value is unchanged; only how Excel shows it. Common formats:
 | `"0%"` | 123457% | 26% |
 | `"0.0%"` | 123456.8% | 25.6% |
 
+A percent format multiplies by 100, so it is for shares held as
+fractions: 0.256 shows as 25.6%, and 25.6 as 2560.0%. When every number
+in a column is 1 or more (or -1 or less), so it looks already
+multiplied by 100, xlkit says so:
+
+```r
+write_xlsx(data.frame(share = c(25.6, 40.2)), "shares.xlsx", formats = c(share = "0.0%"))
+#> `share` has values such as 25.6 and the format "0.0%", which shows them as 2560.0%.
+#> ℹ A percent format multiplies by 100. To show 25.6%, divide by 100 first.
+```
+
+The file is written as asked. The same message comes for a format in
+`styles`, and from `write_sheet()` and `write_cells()`, where it names
+the cells.
+
 Dates take formats such as `"yyyy-mm-dd"`, `"d mmm yyyy"` and
 `"mm/dd/yyyy hh:mm"`.
 
@@ -591,7 +698,7 @@ column widths. The arguments that change them:
 |---|---|---|
 | `formats` | none | number formats by column name |
 | `widths` | `"auto"` | `"auto"` fits contents as `formats` and the column styles in `styles` show them, up to 60 characters so a long note does not make a column fill the screen; a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted. A format given to a range in `styles` does not change widths; give that column a width |
-| `freeze` | `TRUE` | keep the header row in view (on a sheet with one table); `FALSE` does not; a cell such as `"B2"` freezes the rows above and the columns left of it |
+| `freeze` | `TRUE` | keep the header row in view (on a sheet with one table); `FALSE` does not; a cell such as `"B2"` freezes the rows above and the columns left of it, on every sheet written, even one with several tables |
 | `filter` | `FALSE` | `TRUE` adds filter buttons to the header; Excel allows one filter per sheet, so it needs one table on each |
 | `header_style` | `xl_style(bold = TRUE)` | the header cells' style; `NULL` for plain |
 | `styles` | none | more styles, by column name or by range |
@@ -745,16 +852,26 @@ write_xlsx(df, "survey.xlsx", header = "labels")
 | `values = "codes"` | a labelled column is written as its codes |
 
 A code without a value label is written as the code, with a message
-that names the cells:
+that names the cells. `dtaparser::with_labels(x, labels, label = NULL)`
+makes a labelled column from codes `x`, value labels `labels` (a vector
+of codes named by their labels) and an optional variable label:
 
 ```r
-#> `sex` has 3 cells whose code has no value label: 9 in A5, A12 and A30.
+df <- data.frame(
+  id = 1:5,
+  sex = dtaparser::with_labels(c(1, 2, 9, 2, 9), c(Male = 1, Female = 2), label = "Sex")
+)
+write_xlsx(df, "codes.xlsx")
+#> `sex` has 2 cells whose code has no value label: 9 in B4 and B6.
 #> They are written as codes.
 #> ℹ Add a label with `dtaparser::with_labels()`, or write the column's codes with `values = "codes"`.
 ```
 
-Going the other way, a sheet with long headers reads with short names
-and keeps the headers as variable labels:
+`sex` is column B, below the header in row 1, so its third and fifth
+values, the two 9s, are in B4 and B6.
+
+Going the other way, a sheet whose headers are text, not names, reads
+with clean names and keeps the headers as variable labels:
 
 ```r
 df <- read_xlsx("survey.xlsx", names = "snake")
@@ -763,8 +880,17 @@ attr(df$age_at_first_birth, "label")
 dtaparser::save_dta(df, "survey.dta")   # keeps them as variable labels
 ```
 
-xlkit does not turn text back into value labels; use
-`dtaparser::with_labels()` or `haven::labelled()` after reading.
+`"snake"` cleans names but does not shorten them. Stata allows 32
+characters, and only `names = "stata"` cuts names to that length.
+
+xlkit does not turn text back into value labels. To do that after
+reading, give `dtaparser::with_labels()` the codes and the labels:
+
+```r
+df$sex <- dtaparser::with_labels(match(df$sex, c("Male", "Female")), c(Male = 1, Female = 2))
+```
+
+`haven::labelled()` works the same way.
 
 ## Messages and what to do about them
 
@@ -774,15 +900,20 @@ xlkit does not turn text back into value labels; use
 | `... is not an .xlsx workbook` | the file is another format with an `.xlsx` name | open it with the reader for its real format |
 | `... has no sheet "X"` | the name is not a tab | use one of the names listed, or `xlsx_sheets()` |
 | `Row 1 has text only in B1` (warning) | the header row looks like a title | give `header =` or `range =` |
-| `New names:` | blank or repeated headers were given names | nothing, or choose `names =` |
+| `` `header = 50`, but the last row with data ... is 40 `` | the header row is below the data | give the header's row as Excel shows it, or `range =` |
+| `New names:` | blank or repeated headers were given names, or a rule (or `"stata"`'s 32-character cut) made two names equal | nothing, or choose `names =` |
 | `col is text because N of its values are not ...` | a few cells keep a column of numbers or dates from being one | `types =` for that column, or fix the cells |
 | `N cells in col could not be read as ...` (warning) | `types` asked for a type some cells do not fit | `xlsx_problems(df)`; choose `"text"` and convert yourself |
 | `N cells hold Excel errors` (warning) | formulas in the workbook gave errors | `xlsx_problems(df)`; `"text"` keeps the error text |
 | `N cells hold NaN or Inf` (warning) | `write_xlsx()` wrote numbers Excel cannot store as blank cells | replace them with numbers or `NA` first |
+| `No sheet of ... is named "X" or matches it as a regular expression` | `read_sheets()`'s `sheets` names no sheet and matches none | use a name from `xlsx_sheets()`, or fix the expression |
+| `` `path` must end in .xlsx, and ... does not `` | `write_xlsx()` was given a path with another extension (`write_sheet()` and `write_cells()` say `.xlsx or .xlsm`, which they also edit) | end the path in `.xlsx` |
+| `... cannot be written: its folder, ..., does not exist` | the folder in `path` is missing | make it with `dir.create()`, or fix the path |
 | `... already exists` | `write_xlsx()` would replace a file | `replace = TRUE`, or `write_sheet()` / `write_cells()` to keep the rest |
 | `Sheet name ... which Excel does not allow` | a sheet name breaks Excel's rules | use the suggested name |
 | `formats names ..., which is not a column` | a name in `formats`, `widths` or `styles` is not in the table | fix the name; the message suggests one |
 | `... has N cells whose code has no value label` | some codes of a labelled column have no text | add labels, or `values = "codes"` |
+| `col has values such as 25.6 and the format "0.0%"` | a percent format on numbers that look already multiplied by 100 | divide by 100 first, or use a format without `%` |
 | `a chart plots ..., which no longer matches` | a template's chart plots a fixed range and the new table is another size | make the chart plot an Excel table (see above) |
 | `... is open in Excel` (Windows) | Excel locks open files | close it in Excel and run again |
 | `... has no sheet "X", so it is added` | `write_cells()` or `write_sheet()` named a sheet the workbook does not have | nothing, if you meant a new sheet; otherwise use the name it suggests |
@@ -898,7 +1029,8 @@ Writes a new workbook and returns `path` invisibly.
   or a list of styles named by range,
   `list("A1:F1" = xl_style(align = "center"))`. Excel keeps only a
   merged range's top-left value, so the other cells must be empty.
-- `gap`: blank rows between tables on one sheet.
+- `gap`: blank rows between one table's last row and the next table's
+  title (or header) on the same sheet.
 - `na`: text to write for `NA`; `""` leaves the cell empty.
 - `replace`: `TRUE` replaces `path` if it exists; `FALSE` stops instead.
 

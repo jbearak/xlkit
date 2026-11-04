@@ -5,6 +5,11 @@
 #' Excel errors such as `#N/A`. `cell` and `row` are as Excel shows them,
 #' so you can find each cell in the workbook.
 #'
+#' [read_xlsx()] keeps the problems in the tibble's `xlkit_problems`
+#' attribute, which `xlsx_problems()` reads. Operations that drop
+#' attributes, such as some dplyr verbs, drop it too, so call
+#' `xlsx_problems()` on the tibble [read_xlsx()] returned.
+#'
 #' @param x A tibble from [read_xlsx()] or [read_sheets()].
 #' @return A tibble with columns `cell`, `column`, `row`, `value` (the
 #'   cell's text as Excel shows it) and `problem`, with zero rows when

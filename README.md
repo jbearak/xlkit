@@ -57,6 +57,13 @@ R 4.2 or later. Building needs Rust (<https://rustup.rs>); on Windows,
 Rtools as well. See [Install](docs/r.md#install) for each platform and
 what to do when it fails.
 
+The examples with Stata's labels use dtaparser, which reads and writes
+`.dta` files. xlkit does not need it otherwise:
+
+```r
+install.packages("dtaparser", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+```
+
 ## Guide
 
 [docs/r.md](docs/r.md) covers every task with examples that run against

@@ -33,7 +33,8 @@ the last tab.}
 \item{header, values, na}{As in \code{\link[=write_xlsx]{write_xlsx()}}.}
 
 \item{formats}{Excel number formats by column name, such as
-\code{c(share = "0.0\%")}.}
+\code{c(share = "0.0\%")}. A percent format on a column whose numbers are
+all 1 or more (or -1 or less) gets a message, as in \code{\link[=write_xlsx]{write_xlsx()}}.}
 
 \item{styles}{A list of styles from \code{\link[=xl_style]{xl_style()}}, named by column (the
 column's body) or by a cell or range.}

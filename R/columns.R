@@ -243,3 +243,57 @@ first_format_section <- function(format) {
   }
   format
 }
+
+# A number format with an unquoted "%", which shows a number times 100.
+is_percent_format <- function(format) {
+  rlang::is_string(format) && grepl("%", gsub('"[^"]*"|\\\\.|\\[[^]]*\\]', "", format), fixed = TRUE)
+}
+
+# The message for numbers that look already multiplied by 100 (every
+# finite one at least 1 in absolute value) given a percent format, or
+# NULL. `what` names the column or cells, `verb` agrees with it.
+percent_message <- function(what, v, format, verb = "has") {
+  v <- v[is.finite(v)]
+  if (!is_percent_format(format) || !length(v) || any(abs(v) < 1)) return(NULL)
+  shown <- format(v[[1]], digits = 15, trim = TRUE)
+  code <- gsub('"[^"]*"|\\\\.|\\[[^]]*\\]|_.|\\*.', "", first_format_section(format))
+  parts <- strsplit(code, ".", fixed = TRUE)[[1]]
+  decimals <- if (length(parts) > 1) nchar(gsub("[^0#?]", "", parts[[2]])) else 0
+  comma <- grepl("[0#?],[0#?]", code)
+  as_pct <- paste0(trimws(formatC(v[[1]] * 100, format = "f", digits = decimals,
+                                  big.mark = if (comma) "," else "")), "%")
+  one <- length(v) == 1
+  c(
+    paste0(what, " ", verb, if (one) " the value " else " values such as ", shown, " and the format ",
+           dquote(format), ", which shows ", if (one) "it" else "them", " as ", as_pct, "."),
+    i = paste0("A percent format multiplies by 100. To show ", shown, "%, divide by 100 first.")
+  )
+}
+
+# Percent messages for the numbers written into each range in `ranges`
+# whose style has a percent format, naming the cells.
+percent_range_messages <- function(blocks, ranges) {
+  out <- list()
+  for (rs in ranges) {
+    if (!is_percent_format(rs$style$format)) next
+    cl <- rs$cells
+    rows <- numeric()
+    cols <- numeric()
+    v <- numeric()
+    for (blk in blocks) {
+      if (blk$col < cl[[2]] || blk$col > cl[[4]]) next
+      r <- blk$row + seq_along(blk$kind) - 1
+      hit <- r >= cl[[1]] & r <= cl[[3]] & blk$kind == W_NUMBER & blk$dclass == 0L
+      rows <- c(rows, r[hit])
+      cols <- c(cols, rep(blk$col, sum(hit)))
+      v <- c(v, blk$num[hit])
+    }
+    if (!length(v)) next
+    o <- order(rows, cols)
+    cells <- cell_ref(rows[o], cols[o])
+    m <- percent_message(and_list_first(cells), v[o], rs$style$format,
+                         verb = if (length(cells) == 1) "has" else "have")
+    if (!is.null(m)) out[[length(out) + 1]] <- m
+  }
+  out
+}

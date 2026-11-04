@@ -42,7 +42,8 @@
 #'   the last tab.
 #' @param header,values,na As in [write_xlsx()].
 #' @param formats Excel number formats by column name, such as
-#'   `c(share = "0.0%")`.
+#'   `c(share = "0.0%")`. A percent format on a column whose numbers are
+#'   all 1 or more (or -1 or less) gets a message, as in [write_xlsx()].
 #' @param styles A list of styles from [xl_style()], named by column (the
 #'   column's body) or by a cell or range.
 #' @return `path`, invisibly.
@@ -140,6 +141,7 @@ write_sheet <- function(x, path, sheet, at = NULL, after = NULL, header = "names
   add_table(p, x, at_cell[[1]], at_cell[[2]], args$header, args$values, args$na, formats, styles, NULL,
             TRUE, "`x`", call)
   apply_edit_styles(p, styles$ranges)
+  p$messages <- c(p$messages, percent_range_messages(p$blocks, styles$ranges))
   parts <- edit_parts(p, 0L, after)
   src <- where$full
   if (!where$exists) {

@@ -80,6 +80,28 @@ test_that("a long header is cut to 32 characters under \"stata\", still unique",
   expect_false(anyDuplicated(out$names) > 0)
 })
 
+test_that("\"stata\" names that its rule or 32-character cut makes repeat are in the message", {
+  df <- data.frame(1, 2, 3, 4, 5, 6)
+  names(df) <- c("Region", "Share %", "Share #", "Total", "Number of children ever born in the household, living",
+                 "Number of children ever born in the household, dead")
+  df$total <- 7
+  path <- temp_xlsx()
+  write_xlsx(df, path)
+  msg <- expect_message(out <- read_xlsx(path, names = "stata"), class = "rlang_message")
+  text <- conditionMessage(msg)
+  expect_identical(names(out)[c(3, 6, 7)], c("Share_C", "Number_of_children_ever_born_i_F", "total"))
+  expect_match(text, "C1 \"Share #\" is `Share_C` (it would repeat B1 after the rule)", fixed = TRUE)
+  expect_match(
+    text,
+    "F1 \"Number of children ever born in the household, dead\" is `Number_of_children_ever_born_i_F` (cut to 32 characters, it would repeat E1)",
+    fixed = TRUE
+  )
+  expect_no_match(text, "G1")
+  # With a case, "Total" and "total" become equal too.
+  msg <- expect_message(read_xlsx(path, names = c("stata", "lower")), class = "rlang_message")
+  expect_match(conditionMessage(msg), "G1 \"total\" is `total_g` (it would repeat D1 after the rule)", fixed = TRUE)
+})
+
 test_that("a name that differs from its header keeps the header as its label", {
   df <- suppressMessages(read_xlsx(messy(), sheet = "Headers", names = "snake"))
   expect_identical(attr(df$share_percent, "label"), "Share %")

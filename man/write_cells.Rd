@@ -18,7 +18,9 @@ does not have is added after the last tab.}
 
 \item{styles}{A list of styles from \code{\link[=xl_style]{xl_style()}}, named by cell or
 range, such as \code{list(B2 = xl_style(bold = TRUE, size = 14))}. A style
-changes only what it sets; the cell keeps the rest of its format.}
+changes only what it sets; the cell keeps the rest of its format. A
+percent format on cells whose numbers are all 1 or more (or -1 or
+less) gets a message naming them.}
 
 \item{merge}{Ranges to merge, such as \code{"B2:F2"}, or a list of styles
 named by the ranges to merge. Excel keeps only a merged range's
