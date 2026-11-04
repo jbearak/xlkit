@@ -158,28 +158,55 @@ fn is_text_section(section: &str) -> bool {
     false
 }
 
-/// The condition in a section's leading brackets, such as `[<1]`.
+/// The condition in a section's brackets, such as `[<1]`. Brackets in
+/// quoted text or after a `\\` escape are literals, not conditions.
 fn condition(section: &str) -> Option<Cond> {
-    let mut rest = section;
-    while let Some(open) = rest.find('[') {
-        let close = rest[open..].find(']')? + open;
-        let inner = rest[open + 1..close].trim();
-        let ops = [
-            ("<=", Op::Le),
-            (">=", Op::Ge),
-            ("<>", Op::Ne),
-            ("<", Op::Lt),
-            (">", Op::Gt),
-            ("=", Op::Eq),
-        ];
-        for (text, op) in ops {
-            if let Some(num) = inner.strip_prefix(text) {
-                if let Ok(value) = num.trim().parse::<f64>() {
-                    return Some(Cond { op, value });
+    let chars: Vec<char> = section.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        match chars[i] {
+            '\\' | '_' | '*' => i += 2,
+            '"' => {
+                i += 1;
+                while i < chars.len() && chars[i] != '"' {
+                    i += 1;
                 }
+                i += 1;
+            }
+            '[' => {
+                let start = i + 1;
+                while i < chars.len() && chars[i] != ']' {
+                    i += 1;
+                }
+                let inner: String = chars[start.min(chars.len())..i.min(chars.len())]
+                    .iter()
+                    .collect();
+                if let Some(c) = parse_condition(inner.trim()) {
+                    return Some(c);
+                }
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    None
+}
+
+fn parse_condition(inner: &str) -> Option<Cond> {
+    let ops = [
+        ("<=", Op::Le),
+        (">=", Op::Ge),
+        ("<>", Op::Ne),
+        ("<", Op::Lt),
+        (">", Op::Gt),
+        ("=", Op::Eq),
+    ];
+    for (text, op) in ops {
+        if let Some(num) = inner.strip_prefix(text) {
+            if let Ok(value) = num.trim().parse::<f64>() {
+                return Some(Cond { op, value });
             }
         }
-        rest = &rest[close + 1..];
     }
     None
 }
@@ -360,6 +387,9 @@ mod tests {
         assert_eq!(kind_of("0;0;yyyy-mm-dd", 0.0), NumberKind::Date);
         assert_eq!(kind_of("0;0;yyyy-mm-dd", 2.0), NumberKind::Number);
         assert_eq!(kind_of("d-mmm-yy;@", -1.0), NumberKind::Date);
+        // Quoted or escaped brackets are text, not conditions.
+        assert_eq!(kind_of("\"[<1]\"yyyy-mm-dd;0", 5.0), NumberKind::Date);
+        assert_eq!(kind_of("\\[<1\\]yyyy-mm-dd;0", 5.0), NumberKind::Date);
         assert_eq!(classify("00000;-00000", None).for_value(-42.0).pad, 5);
     }
 
