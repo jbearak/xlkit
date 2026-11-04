@@ -1,0 +1,28 @@
+{
+  "seed": 20261105,
+  "groups": {
+    "R": {
+      "readxl + writexl": "A",
+      "openxlsx2": "B",
+      "xlkit": "C"
+    },
+    "Python": {
+      "openpyxl": "A",
+      "polars": "B",
+      "pandas": "C",
+      "xlkit": "D"
+    },
+    "Julia": {
+      "xlkit": "A",
+      "XLSX.jl": "B"
+    },
+    "TypeScript": {
+      "ExcelJS": "A",
+      "xlkit": "B",
+      "SheetJS CE": "C"
+    },
+    "Stata": {
+      "xlkit": "A"
+    }
+  }
+}
