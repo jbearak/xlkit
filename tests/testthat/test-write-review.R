@@ -51,3 +51,12 @@ test_that("text length counts characters beyond U+FFFF twice, as Excel does", {
   expect_match(conditionMessage(err), "A2 \\(40,000 characters\\)")
   expect_false(file.exists(path))
 })
+
+test_that("a long header in Latin-1 is measured, not counted as empty", {
+  path <- file.path(new_dir(), "latin1.xlsx")
+  df <- data.frame(a = 1)
+  name <- iconv(strrep("é", 40000), "UTF-8", "latin1")
+  names(df) <- name
+  err <- expect_error(write_xlsx(df, path), class = "rlang_error")
+  expect_match(conditionMessage(err), "40,000 characters")
+})

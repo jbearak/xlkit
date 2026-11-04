@@ -59,6 +59,7 @@ typedef struct {
 XlResult xl_info(const char *path);
 XlResult xl_names(const char *path);
 XlResult xl_read(const char *path, const char *sheet);
+XlResult xl_create_new(const char *from, const char *to);
 XlResult xl_write(const char *path, const XlPlan *plan);
 void xl_result_free(XlResult *r);
 
@@ -167,6 +168,16 @@ static SEXP C_xl_names(SEXP path) {
   UNPROTECT(1);
   return out;
 }
+static SEXP C_xl_create_new(SEXP from, SEXP to) {
+  const char *f = utf8(from, "from");
+  const char *t = utf8(to, "to");
+  XlResult *slot;
+  SEXP ptr = PROTECT(new_owner(&slot));
+  own(ptr, slot, xl_create_new(f, t));
+  SEXP out = to_r(ptr);
+  UNPROTECT(1);
+  return out;
+}
 static SEXP C_xl_read(SEXP path, SEXP sheet) {
   const char *p = utf8(path, "path");
   const char *s = utf8(sheet, "sheet");
@@ -245,6 +256,7 @@ static const R_CallMethodDef calls[] = {
   {"C_xl_names", (DL_FUNC) &C_xl_names, 1},
   {"C_xl_read", (DL_FUNC) &C_xl_read, 2},
   {"C_xl_write", (DL_FUNC) &C_xl_write, 2},
+  {"C_xl_create_new", (DL_FUNC) &C_xl_create_new, 2},
   {NULL, NULL, 0}
 };
 

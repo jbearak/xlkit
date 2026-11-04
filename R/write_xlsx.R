@@ -459,9 +459,9 @@ existing_file <- function(path, full, call) {
 
 # Write the plan to a temporary file beside `full`, then move it over
 # `full`, so an error leaves an existing file as it was (ADR 0005).
-# Without `replace`, the new file is linked into place, which fails if
-# another program made `full` since the check above, so it is never
-# overwritten.
+# Without `replace`, the new file is copied to a file created only if
+# none exists, so one another program made since the check above is
+# never overwritten.
 write_plan <- function(plan, path, full, replace, call) {
   tmp <- tempfile(paste0(".", basename(full), "-"), tmpdir = dirname(full), fileext = ".tmp")
   on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
@@ -476,10 +476,12 @@ write_plan <- function(plan, path, full, replace, call) {
     rlang::abort(msg, call = call)
   }
   if (!replace) {
-    linked <- suppressWarnings(file.link(tmp, full))
-    if (linked) return(invisible())
-    if (file.exists(full)) existing_file(path, full, call)
-    # A file system without hard links: fall back on a rename.
+    made <- .Call(C_xl_create_new, enc2utf8(tmp), enc2utf8(full))
+    if (!is.null(made$status)) {
+      rlang::abort(paste0(basename(path), " could not be written: ", made$message, "."), call = call)
+    }
+    if (made$ints[[1]] == 0L) existing_file(path, full, call)
+    return(invisible())
   }
   why <- NULL
   ok <- withCallingHandlers(

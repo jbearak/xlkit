@@ -16,6 +16,7 @@ excel_text_max <- 32767
 # beyond U+FFFF (most emoji) counts as two. Only text longer than half
 # the limit can be too long, so only that is measured.
 text_units <- function(x) {
+  x <- enc2utf8(x)
   n <- nchar(x, allowNA = TRUE)
   long <- which(!is.na(n) & n > excel_text_max %/% 2)
   if (length(long)) n[long] <- lengths(iconv(x[long], "UTF-8", "UTF-16LE", toRaw = TRUE)) %/% 2

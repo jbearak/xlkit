@@ -588,7 +588,7 @@ column widths. The arguments that change them:
 | argument | default | does |
 |---|---|---|
 | `formats` | none | number formats by column name |
-| `widths` | `"auto"` | `"auto"` fits contents, up to 60 characters so a long note does not make a column fill the screen; a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted |
+| `widths` | `"auto"` | `"auto"` fits contents as `formats` and the column styles in `styles` show them, up to 60 characters so a long note does not make a column fill the screen; a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted. A format given to a range in `styles` does not change widths; give that column a width |
 | `freeze` | `TRUE` | keep the header row in view (on a sheet with one table); `FALSE` does not; a cell such as `"B2"` freezes the rows above and the columns left of it |
 | `filter` | `FALSE` | `TRUE` adds filter buttons to the header; Excel allows one filter per sheet, so it needs one table on each |
 | `header_style` | `xl_style(bold = TRUE)` | the header cells' style; `NULL` for plain |

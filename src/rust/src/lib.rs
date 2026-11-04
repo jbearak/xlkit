@@ -170,6 +170,40 @@ pub extern "C" fn xl_names(path: *const c_char) -> XlResult {
     })
 }
 
+/// Copy `from` to `to`, creating `to` only if it does not exist: the
+/// check and the creation are one step (`create_new`), so a file another
+/// program made is never overwritten. ints is `[1]` when written, `[0]`
+/// when `to` already exists. A copy that fails part way removes `to`.
+#[no_mangle]
+pub extern "C" fn xl_create_new(from: *const c_char, to: *const c_char) -> XlResult {
+    run::<read::Failure, _>(&[from, to], |a| {
+        let mut out = Out::default();
+        let io = |e: std::io::Error| read::Failure::Io(e.to_string());
+        let mut dest = match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(a[1])
+        {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                out.ints.push(0);
+                return Ok(out);
+            }
+            Err(e) => return Err(io(e)),
+        };
+        let copied = std::fs::File::open(a[0])
+            .and_then(|mut src| std::io::copy(&mut src, &mut dest))
+            .and_then(|_| dest.sync_all());
+        if let Err(e) = copied {
+            drop(dest);
+            let _ = std::fs::remove_file(a[1]);
+            return Err(io(e));
+        }
+        out.ints.push(1);
+        Ok(out)
+    })
+}
+
 /// One sheet's used cells (see `read::Grid`): ints are
 /// `[first_row, first_col, nrow, ncol, is_1904, n_merged, merged...]`;
 /// bytes are the kinds then the pads; doubles the numbers; strings the
