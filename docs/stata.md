@@ -57,9 +57,9 @@ Two things differ:
 | `..., datestring("%tdCCYY-NN-DD")` | `formats = c(date = "yyyy-mm-dd")` |
 | `export excel x y using "f.xlsx" if g == 1, ...` | `write_xlsx(df[df$g == 1, c("x", "y")], "f.xlsx", ...)` |
 
-`replace = TRUE` matches Stata's `replace`. Without it, `write_xlsx()`
-still replaces a workbook it wrote itself, so a script that reruns does
-not need it; it refuses to replace a workbook another program saved.
+`replace = TRUE` matches Stata's `replace`: without it, `write_xlsx()`
+stops when the file exists, and says which sheets it has and how to
+keep them.
 
 ## putexcel
 

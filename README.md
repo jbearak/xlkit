@@ -27,7 +27,7 @@ write_cells("template.xlsx", sheet = "Cover", C4 = 1250, C5 = as.Date("2024-12-3
 - **Templates stay intact.** `write_sheet()` and `write_cells()` rewrite
   only the cells they write and copy the rest of the file byte for
   byte: charts, comments, conditional formats, pivot tables, macros.
-  `write_xlsx()` will not replace a workbook it did not write.
+  `write_xlsx()` never replaces a file unless told to.
 - **Stata's labels.** Variable labels as the header, value labels as
   the text, and long headers back as variable labels, in the form
   dtaparser's `read_dta()` and `save_dta()` use.

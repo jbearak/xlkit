@@ -72,7 +72,7 @@ it lists them:
 
 ```r
 xlkit_example()
-#> [1] "dates.xlsx"    "messy.xlsx"    "report.xlsx"   "sales.xlsx"    "template.xlsx"
+#> [1] "dates.xlsx"     "dates1904.xlsx" "messy.xlsx"     "report.xlsx"    "sales.xlsx"     "template.xlsx"
 ```
 
 | workbook | what it holds |
@@ -126,6 +126,21 @@ hundred rows:
 Blank cells are `NA` in every type. Text that is only spaces is `NA`
 too. Excel errors such as `#N/A` are `NA` with a warning; see
 [Missing values and Excel errors](#missing-values-and-excel-errors).
+
+A path that does not exist stops, and names a file with a similar name
+in the same folder if there is one:
+
+```r
+read_xlsx("reprot.xlsx")
+#> Error in `read_xlsx()`:
+#> ! reprot.xlsx does not exist.
+#> ℹ Did you mean report.xlsx?
+```
+
+A file that is not an `.xlsx` or `.xlsm` workbook, such as a CSV file
+renamed `.xlsx`, stops with `... is not an .xlsx workbook (it looks
+like text)`. An empty sheet reads as a tibble with no rows and no
+columns.
 
 ## Choose a sheet and a range
 
@@ -206,7 +221,7 @@ A range that lies outside the sheet, or past Excel's last row
 | `FALSE` | none; columns are named by their letters, `B`, `C`, ... and every row is body |
 
 A header cell merged across several columns names each of them. That is
-what a two-row header usually needs: `Income` merged across C4:E4 over
+what a two-row header usually needs: `Income` merged across B4:D4 over
 `2020`, `2021`, `2022` gives `Income 2020`, `Income 2021`,
 `Income 2022`.
 
@@ -230,6 +245,20 @@ and again in C1, nothing in D1, and `Share %` in E1.
 | `"lower"`, `"upper"` | `"unique"`, then lower or upper case; add one to another rule with `c("stata", "lower")` |
 | a function | the function's result on the header text, made unique |
 
+When xlkit has to change a header to make a name, because it is blank
+or repeats another, it says which:
+
+```r
+df <- read_xlsx(path, sheet = "Headers")
+#> New names:
+#> • C1 "Total" is `Total_C` (it repeats B1)
+#> • D1 (blank) is `D`
+#> ℹ Choose another rule with `names =`, or set your own with `names(df) <- ...`.
+```
+
+The rules you choose with `names` change names without a message; only
+these repairs get one.
+
 When a name differs from its header text, the text is kept as the
 column's variable label, so you can always see where a name came from:
 
@@ -250,6 +279,21 @@ dtaparser's `var_label()` reads the same attribute, and its
 table in [Read a sheet](#read-a-sheet). A guess never loses a value:
 a column with one text cell among numbers is character, not numbers
 with an `NA`.
+
+When a column is text only because a few of its cells are, xlkit says
+which cells, since they are usually typos or codes in a column of
+numbers or dates:
+
+```r
+path <- xlkit_example("messy.xlsx")
+df <- read_xlsx(path, sheet = "Types")
+#> `amount` is text because 2 of its 2,003 values are not numbers:
+#> C2003 ("n/a") and C2004 ("12,5").
+#> ℹ To read it as numbers, use `types = c(amount = "number")`; those cells become NA.
+```
+
+The message comes when 10 cells or fewer, and fewer than 1 in 10 of
+the column's values, keep a column of numbers or dates from being one.
 
 Give `types` to choose a type. Name the columns you care about; the rest
 are guessed:
@@ -283,7 +327,10 @@ order (`types = c("text", "guess", "number")`). A name in `types` that
 is not a column stops with the column names.
 
 `"text"` writes a number as Excel shows it when its number format pads
-with zeros, so `2139` formatted `00000` reads as `"02139"`. Other numbers
+with zeros, so `2139` formatted `00000` reads as `"02139"`. A code typed
+as a number without such a format has no leading zero anywhere in the
+file, and no reader can restore it; if the codes have a known width,
+pad them after reading: `formatC(as.integer(df$zip), width = 5, flag = "0")`. Other numbers
 are written in full, up to 15 significant digits (`0.1`, not
 `0.1000000000000000055`), and dates as `2024-03-01`.
 
@@ -345,7 +392,10 @@ read_xlsx(path, types = c(day = "number", clock = "number"))
 To read every date as its number, use `dates = FALSE`.
 
 A date typed as text (`"2024-03-01"`) stays text unless you ask for
-`"date"`.
+`"date"`. A column of dates with a stray text cell, such as `unknown`,
+is text, and the message in [Column types](#column-types) names the
+cell; `types = c(day = "date")` reads the dates and makes that cell
+`NA`, with a warning.
 
 ## Missing values and Excel errors
 
@@ -393,8 +443,9 @@ all[["Sales 2024"]]
 It takes `read_xlsx()`'s arguments (except `sheet`) and uses them for
 every sheet. `sheets = c("Sales 2022", "Sales 2023")` reads some; a
 regular expression does too: `sheets = "^Sales"`. Each tibble keeps its
-own `xlsx_problems()`. To stack sheets with the same columns into one
-table, `dplyr::bind_rows(all, .id = "sheet")`.
+own `xlsx_problems()`. An empty sheet gives a tibble with no rows and
+no columns, as in `read_xlsx()`. To stack sheets with the same columns
+into one table, `dplyr::bind_rows(all, .id = "sheet")`.
 
 ## Write a table
 
@@ -427,26 +478,26 @@ written as text: `"=A1+1"` is not a formula and `"https://..."` is not
 a link unless you say so with `xl_formula()`. `sheet` names the
 sheet: `write_xlsx(scores, "scores.xlsx", sheet = "Scores")`.
 
-**When the file exists.** `write_xlsx()` replaces a workbook that xlkit
-wrote, so a script can run again and again. It will not replace a
-workbook that someone or something else saved, such as a template, or
-one of xlkit's that was later opened and saved in Excel:
+**When the file exists.** `write_xlsx()` never replaces a file unless
+you say so, as Stata's `export excel` does:
 
 ```r
 write_xlsx(scores, "results.xlsx")
 #> Error in `write_xlsx()`:
-#> ! results.xlsx was last saved by another program, and has sheets
-#>   "Cover", "Chart" and "Data". write_xlsx() would replace all of them.
-#> ℹ To fill in this workbook and keep the rest, use `write_sheet()` or `write_cells()`.
-#> ℹ To replace it anyway, use `replace = TRUE`.
+#> ! results.xlsx already exists, with sheets "Cover", "Chart" and "Data".
+#> ℹ To replace the whole workbook, use `replace = TRUE`.
+#> ℹ To change one sheet and keep the rest, use `write_sheet()` or `write_cells()`.
 ```
 
-xlkit knows its own files by a timestamp it stores in the workbook's
-properties; any program that saves the file changes it.
+A script that rewrites its own output each time it runs passes
+`replace = TRUE`. The new file is written beside the old one and then
+moved over it, so an error part way leaves the old file as it was.
 
-Excel's limits are errors that say which value broke them: more than
-1,048,576 rows or 16,384 columns, text longer than 32,767 characters,
-and a sheet name longer than 31 characters or holding `[ ] : * ? / \`.
+Excel's limits are errors that say which value broke them and what to
+do: more than 1,048,576 rows or 16,384 columns (split the table across
+sheets), text longer than 32,767 characters, and a sheet name longer
+than 31 characters or holding `[ ] : * ? / \` (see
+[Write several tables](#write-several-tables)).
 
 ## Write several tables
 
@@ -467,6 +518,19 @@ write_xlsx(
   gap = 2
 )
 ```
+
+A sheet name Excel does not allow stops before anything is written, and
+suggests one it does:
+
+```r
+write_xlsx(list("Q1/Q2" = q, Q3 = q3), "quarters.xlsx")
+#> Error in `write_xlsx()`:
+#> ! Sheet name "Q1/Q2" has "/", which Excel does not allow in sheet names.
+#> ℹ Use another name, such as "Q1-Q2".
+```
+
+Names longer than 31 characters, holding `[ ] : * ? \`, or the same as
+another sheet's name apart from case stop the same way.
 
 `Table 1. Means` goes in `A1` in bold, `means` from `A2`, then two
 blank rows, then `Table 2. Counts` and `counts`. An unnamed table
@@ -506,7 +570,7 @@ column widths. The arguments that change them:
 | argument | default | does |
 |---|---|---|
 | `formats` | none | number formats by column name |
-| `widths` | `"auto"` | `"auto"` fits contents (up to 60 characters); a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted |
+| `widths` | `"auto"` | `"auto"` fits contents, up to 60 characters so a long note does not make a column fill the screen; a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted |
 | `freeze` | `TRUE` | keep the header row in view; `FALSE` does not; a cell such as `"B2"` freezes the rows above and the columns left of it |
 | `filter` | `FALSE` | `TRUE` adds filter buttons to the header |
 | `header_style` | `xl_style(bold = TRUE)` | the header cells' style; `NULL` for plain |
@@ -527,7 +591,16 @@ write_xlsx(
 ```
 
 A key that matches a column name styles that column's body; any other
-key must be a cell or range. A key that is neither stops with an error.
+key must be a cell or range. A name in `formats` or `widths` that is
+not a column, or a `styles` key that is neither a column nor a range,
+stops before anything is written:
+
+```r
+write_xlsx(sales, "sales.xlsx", formats = c(shar = "0.0%"))
+#> Error in `write_xlsx()`:
+#> ! `formats` names `shar`, which is not a column of `sales`.
+#> ℹ Did you mean `share`?
+```
 
 ## Fill in an existing workbook
 
@@ -545,14 +618,25 @@ path <- file.path(tempdir(), "template.xlsx")
 file.copy(xlkit_example("template.xlsx"), path)
 ```
 
-**Replace what is on a sheet.** `write_sheet()` clears the sheet's cells
-and writes the table from `A1`. The sheet keeps its place among the
-tabs, its column widths and its tab color, and the chart that plots it
-now plots the new data:
+**Replace what is on a sheet.** `write_sheet()` clears the sheet's
+cells, with their values, formulas, formats and merged ranges, and
+writes the table from `A1` with a bold header, as `write_xlsx()` does.
+The sheet keeps its place among the tabs, its column widths, frozen
+panes, tab color and print settings, and the chart that plots it now
+plots the new data:
 
 ```r
 write_sheet(new_data, path, sheet = "Data")
 ```
+
+A chart plots a fixed range, such as `Data!A1:B13`. If the new table
+has more rows, the chart still plots `A1:B13`; if fewer, it plots
+blanks at the end. To have a chart follow the data, make the template's
+chart plot an Excel table (Insert ▸ Table) and write into the table:
+`write_sheet(new_data, path, sheet = "Data", at = "A1")`, where `A1` is
+the table's top-left cell, resizes the table to fit `new_data`, and
+charts that plot the table follow it. xlkit says when a chart plots a
+range that no longer matches the data it wrote.
 
 **Put values into cells.** `write_cells()` takes cell references and
 values. A cell keeps its own format, so a template's formatted cell
@@ -637,6 +721,15 @@ write_xlsx(df, "survey.xlsx", header = "labels")
 | `values = "labels"` (default) | a labelled column is written as its labels; a code without a label is written as the code |
 | `values = "codes"` | a labelled column is written as its codes |
 
+A code without a value label is written as the code, with a message
+that names the cells:
+
+```r
+#> `sex` has 3 cells whose code has no value label: 9 in A5, A12 and A30.
+#> They are written as codes.
+#> ℹ Add a label with `dtaparser::with_labels()`, or write the column's codes with `values = "codes"`.
+```
+
 Going the other way, a sheet with long headers reads with short names
 and keeps the headers as variable labels:
 
@@ -654,11 +747,19 @@ xlkit does not turn text back into value labels; use
 
 | message | means | do |
 |---|---|---|
+| `... does not exist` | no file at that path | check the name; the message suggests a similar file |
+| `... is not an .xlsx workbook` | the file is another format with an `.xlsx` name | open it with the reader for its real format |
 | `... has no sheet "X"` | the name is not a tab | use one of the names listed, or `xlsx_sheets()` |
-| `Row 1 has text only in B1` | the header row looks like a title | give `header =` or `range =` |
-| `N cells in col could not be read as ...` | `types` asked for a type some cells do not fit | `xlsx_problems(df)`; choose `"text"` and convert yourself |
-| `N cells hold Excel errors` | formulas in the workbook gave errors | `xlsx_problems(df)`; `"text"` keeps the error text |
-| `... was last saved by another program` | `write_xlsx()` would replace a workbook it did not write | `write_sheet()` / `write_cells()`, or `replace = TRUE` |
+| `Row 1 has text only in B1` (warning) | the header row looks like a title | give `header =` or `range =` |
+| `New names:` | blank or repeated headers were given names | nothing, or choose `names =` |
+| `col is text because N of its values are not ...` | a few cells keep a column of numbers or dates from being one | `types =` for that column, or fix the cells |
+| `N cells in col could not be read as ...` (warning) | `types` asked for a type some cells do not fit | `xlsx_problems(df)`; choose `"text"` and convert yourself |
+| `N cells hold Excel errors` (warning) | formulas in the workbook gave errors | `xlsx_problems(df)`; `"text"` keeps the error text |
+| `... already exists` | `write_xlsx()` would replace a file | `replace = TRUE`, or `write_sheet()` / `write_cells()` to keep the rest |
+| `Sheet name ... which Excel does not allow` | a sheet name breaks Excel's rules | use the suggested name |
+| `formats names ..., which is not a column` | a name in `formats`, `widths` or `styles` is not in the table | fix the name; the message suggests one |
+| `... has N cells whose code has no value label` | some codes of a labelled column have no text | add labels, or `values = "codes"` |
+| `a chart plots ..., which no longer matches` | a template's chart plots a fixed range and the new table is another size | make the chart plot an Excel table (see above) |
 | `... is open in Excel` (Windows) | Excel locks open files | close it in Excel and run again |
 | `cannot edit this worksheet: ...` | the sheet's XML uses a form xlkit cannot splice safely | open and save the file in Excel, then try again |
 
@@ -768,7 +869,7 @@ Writes a new workbook and returns `path` invisibly.
   [Format the output](#format-the-output). They apply to every sheet.
 - `gap`: blank rows between tables on one sheet.
 - `na`: text to write for `NA`; `""` leaves the cell empty.
-- `replace`: `TRUE` replaces an existing file that xlkit did not write.
+- `replace`: `TRUE` replaces `path` if it exists; `FALSE` stops instead.
 
 ### `write_sheet()`
 

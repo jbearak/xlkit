@@ -291,6 +291,8 @@ Rules:
 - Library {letters['xlkit']} is an R package. {'The other libraries are in other languages; ' if group not in ('R', 'Stata') else ''}judge each
   library on the code its own user writes for each scenario, and on its own documentation.
 - Work through every task for every library before scoring.
+- Library names have been replaced by "Library A", "Library B" and so on, also inside install commands,
+  imports and file paths. Such a replacement is not an error in the documentation; read it as the real name.
 
 ## The thirteen tasks
 
@@ -325,7 +327,8 @@ and one or two sentences of reason for each score below 3. Then end with one JSO
 
 Use integers 0 to 3, in that order. {'For Stata use two numbers per task, for tasks 2 to 13.' if stata else ''}
 """
-    names = group_names(letters)
+    # The Stata session is not blinded (rubric.md, "Stata").
+    names = {} if stata else group_names(letters)
     body = "\n".join(bundle(lib, letters[lib], others, names) for lib in libs)
     return head + "\n" + body
 
