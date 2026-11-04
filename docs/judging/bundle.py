@@ -88,9 +88,9 @@ LIBRARIES = {
     },
     "XLSX.jl": {
         "names": {"XLSX.jl": "Library {L}", "JuliaData/XLSX": "Library {L}", "felipenoris/XLSX": "Library {L}"},
-        # The package itself is `XLSX`; replace it where it is installed or imported, not in `XLSX.readxlsx`.
-        "patterns": [(r"\b(using|import)\s+XLSX\b", r"\1 Library{L}"), (r'Pkg\.add\("XLSX"\)', 'Pkg.add("Library{L}")'),
-                     (r"(\]\s*add\s+)XLSX\b", r"\1Library{L}")],
+        # The package itself is `XLSX`. Replace it in `using`/`import` lines (also in lists) and as the
+        # string "XLSX" (Pkg.add), not in qualified names like `XLSX.readxlsx`.
+        "patterns": [("julia-imports", None), (r'"XLSX"', '"Library{L}"'), (r"(\]\s*add\s+)XLSX\b", r"\1Library{L}")],
         "items": [("file", f"XLSX.jl/{p}") for p in [
             "README.md", "docs/src/index.md", "docs/src/tutorial/XLSXtutorial.md",
             "docs/src/tutorial/FileIOtutorial.md", "docs/src/migration.md",
@@ -103,7 +103,7 @@ LIBRARIES = {
     "SheetJS CE": {
         "names": {"SheetJS": "Library {L}", "sheetjs": "library-{L}"},
         # The npm package is `xlsx`; replace it in imports, not in file names like `out.xlsx`.
-        "patterns": [(r"""(require\(\s*|from\s+|import\(\s*)(["'])xlsx(/[\w.-]*)?\2""", r"\1\2library-{L}\3\2")],
+        "patterns": [(r"""(require\(\s*|from\s+|import\(\s*)(["'])xlsx((?:/[\w.-]+)*)\2""", r"\1\2library-{L}\3\2")],
         "items": [("file", f"sheetjs-docs/docz/docs/{p}") for p in [
             "02-getting-started/01-installation/03-nodejs.md", "08-api/index.md", "08-api/03-parse-options.md",
             "08-api/05-write-options.md", "08-api/07-utilities/01-array.md", "08-api/07-utilities/08-wb.md",
@@ -231,7 +231,13 @@ def group_patterns(letters):
     out = []
     for lib, letter in letters.items():
         if lib != "xlkit":
-            out += [(pat, rep.replace("{L}", letter)) for pat, rep in LIBRARIES[lib].get("patterns", [])]
+            for pat, rep in LIBRARIES[lib].get("patterns", []):
+                if pat == "julia-imports":
+                    label = f"Library{letter}"
+                    out.append((re.compile(r"^([ \t]*(?:using|import)\b[^\n]*)$", re.M),
+                                lambda m, label=label: re.sub(r"\bXLSX\b(?!\.)", label, m.group(1))))
+                else:
+                    out.append((pat, rep.replace("{L}", letter)))
     return out
 
 
