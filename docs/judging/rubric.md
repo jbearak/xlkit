@@ -83,17 +83,17 @@ in the one way this table fixes for each task. Score that probe only.
 | # | probe |
 |---|---|
 | 1 | the build or install fails for a missing system requirement |
-| 2 | the path names a file that does not exist, or a `.csv` renamed `.xlsx` |
+| 2 | the path names a file that does not exist (`reprot.xlsx`) |
 | 3 | the sheet name is misspelled (`Sales 2042`) |
 | 4 | the header has two cells named `Total` and a blank cell |
 | 5 | the cells `n/a` and `12,5` in `amount` cannot be read as numbers |
-| 6 | a date-formatted cell holds a day before 1 March 1900, or a text that is not a date |
+| 6 | the date column has one cell holding the text `unknown` |
 | 7 | `#N/A` and `#DIV/0!` cells in a column read as numbers |
 | 8 | one of the twelve sheets is empty |
 | 9 | `out.xlsx` already exists and was made by someone else |
-| 10 | a sheet name is 40 characters long or contains `/` |
+| 10 | one sheet name contains `/` (`Q1/Q2`) |
 | 11 | a number format is given for a column name that is not in the table |
-| 12 | the template has a part the library cannot keep (a chart, a pivot table, or a feature it does not model) |
+| 12 | the template's chart on `Chart` |
 | 13 | a code in `sex` has no value label |
 
 - 3: the library stops or warns, and the message names the problem and
@@ -103,6 +103,11 @@ in the one way this table fixes for each task. Score that probe only.
 - 1: it fails with a message that does not name the problem, or the
   docs do not say what happens.
 - 0: it gives a wrong result without a message.
+
+Where the right handling of a probe needs no message (an empty sheet
+read as an empty table, a chart kept as it was), score 3 when the
+docs say the library gives the right result, 1 when they do not say
+what happens, and 0 when they say it gives a wrong result.
 
 ### Documentation
 
