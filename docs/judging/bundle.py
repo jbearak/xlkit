@@ -88,6 +88,9 @@ LIBRARIES = {
     },
     "XLSX.jl": {
         "names": {"XLSX.jl": "Library {L}", "JuliaData/XLSX": "Library {L}", "felipenoris/XLSX": "Library {L}"},
+        # The package itself is `XLSX`; replace it where it is installed or imported, not in `XLSX.readxlsx`.
+        "patterns": [(r"\b(using|import)\s+XLSX\b", r"\1 Library{L}"), (r'Pkg\.add\("XLSX"\)', 'Pkg.add("Library{L}")'),
+                     (r"(\]\s*add\s+)XLSX\b", r"\1Library{L}")],
         "items": [("file", f"XLSX.jl/{p}") for p in [
             "README.md", "docs/src/index.md", "docs/src/tutorial/XLSXtutorial.md",
             "docs/src/tutorial/FileIOtutorial.md", "docs/src/migration.md",
@@ -99,6 +102,8 @@ LIBRARIES = {
     },
     "SheetJS CE": {
         "names": {"SheetJS": "Library {L}", "sheetjs": "library-{L}"},
+        # The npm package is `xlsx`; replace it in imports, not in file names like `out.xlsx`.
+        "patterns": [(r"""(require\(\s*|from\s+|import\(\s*)(["'])xlsx(/[\w.-]*)?\2""", r"\1\2library-{L}\3\2")],
         "items": [("file", f"sheetjs-docs/docz/docs/{p}") for p in [
             "02-getting-started/01-installation/03-nodejs.md", "08-api/index.md", "08-api/03-parse-options.md",
             "08-api/05-write-options.md", "08-api/07-utilities/01-array.md", "08-api/07-utilities/08-wb.md",
@@ -221,6 +226,15 @@ def item_text(others, item):
     raise ValueError(kind)
 
 
+def group_patterns(letters):
+    """Context-dependent replacements (package names that are also common words)."""
+    out = []
+    for lib, letter in letters.items():
+        if lib != "xlkit":
+            out += [(pat, rep.replace("{L}", letter)) for pat, rep in LIBRARIES[lib].get("patterns", [])]
+    return out
+
+
 def group_names(letters):
     """Every member's names, each mapped to its own letter, for use in every bundle."""
     out = {}
@@ -233,8 +247,10 @@ def group_names(letters):
 URL = re.compile(r"https?://[^\s)\]>\"'`]+")
 
 
-def blind(text, names, title=False):
+def blind(text, names, title=False, patterns=()):
     """Replace each library name by its label: in links (dropped), titles (anywhere) and prose."""
+    for pat, rep in patterns:
+        text = re.sub(pat, rep, text)
     lowered = [n.lower() for n in names]
     text = URL.sub(lambda m: "[link]" if any(n in m.group(0).lower() for n in lowered) else m.group(0), text)
     # Longest names first, so "openxlsx2" is replaced before "openxlsx".
@@ -244,12 +260,12 @@ def blind(text, names, title=False):
     return text
 
 
-def bundle(name, letter, others, names):
+def bundle(name, letter, others, names, patterns=()):
     if name == "xlkit":
         parts = [(f, read(os.path.join(REPO, f))) for f in OUR_FILES]
     else:
         parts = [item_text(others, it) for it in LIBRARIES[name]["items"]]
-    body = "\n\n".join(f"===== {blind(title, names, title=True)} =====\n{blind(text, names)}" for title, text in parts)
+    body = "\n\n".join(f"===== {blind(title, names, title=True)} =====\n{blind(text, names, patterns=patterns)}" for title, text in parts)
     return f"########## Library {letter} ##########\n\n{body}\n"
 
 
@@ -329,7 +345,8 @@ Use integers 0 to 3, in that order. {'For Stata use two numbers per task, for ta
 """
     # The Stata session is not blinded (rubric.md, "Stata").
     names = {} if stata else group_names(letters)
-    body = "\n".join(bundle(lib, letters[lib], others, names) for lib in libs)
+    patterns = () if stata else group_patterns(letters)
+    body = "\n".join(bundle(lib, letters[lib], others, names, patterns) for lib in libs)
     return head + "\n" + body
 
 

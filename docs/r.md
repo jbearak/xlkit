@@ -853,7 +853,7 @@ held Excel errors: a tibble with `cell`, `column`, `row`, `value` and
 ```r
 write_xlsx(x, path, sheet = "Sheet1", header = "names", values = "labels",
            formats = NULL, widths = "auto", freeze = TRUE, filter = FALSE,
-           header_style = xl_style(bold = TRUE), styles = NULL,
+           header_style = xl_style(bold = TRUE), styles = NULL, merge = NULL,
            gap = 1, na = "", replace = FALSE)
 ```
 
@@ -867,6 +867,7 @@ Writes a new workbook and returns `path` invisibly.
 - `values`: `"labels"` or `"codes"`, for labelled columns.
 - `formats`, `widths`, `freeze`, `filter`, `header_style`, `styles`: see
   [Format the output](#format-the-output). They apply to every sheet.
+- `merge`: ranges to merge, such as `"A1:F1"`, on every sheet written.
 - `gap`: blank rows between tables on one sheet.
 - `na`: text to write for `NA`; `""` leaves the cell empty.
 - `replace`: `TRUE` replaces `path` if it exists; `FALSE` stops instead.

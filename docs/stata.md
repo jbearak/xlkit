@@ -54,8 +54,8 @@ Two things differ:
 | `..., sheet("Data", modify) cell(B3)` | `write_sheet(df, "f.xlsx", sheet = "Data", at = "B3")` |
 | `..., keepcellfmt` | nothing: `write_sheet(..., at =)` keeps cell formats |
 | `..., missing("NA")` | `na = "NA"` |
-| `..., datestring("%tdCCYY-NN-DD")` | `formats = c(date = "yyyy-mm-dd")` |
-| `export excel x y using "f.xlsx" if g == 1, ...` | `write_xlsx(df[df$g == 1, c("x", "y")], "f.xlsx", ...)` |
+| `..., datestring("%tdCCYY-NN-DD")` | write the dates as text first: `df$date <- format(df$date, "%Y-%m-%d")`; to keep them as Excel dates shown that way, `formats = c(date = "yyyy-mm-dd")` |
+| `export excel x y using "f.xlsx" if g == 1, ...` | `write_xlsx(df[which(df$g == 1), c("x", "y")], "f.xlsx", ...)` (`which()` drops rows where `g` is `NA`, as `if` does) |
 
 `replace = TRUE` matches Stata's `replace`: without it, `write_xlsx()`
 stops when the file exists, and says which sheets it has and how to
@@ -70,7 +70,7 @@ becomes one call:
 ```stata
 putexcel set "results.xlsx", sheet("Cover") modify
 putexcel C4 = 1250
-putexcel C5 = date("2024-12-31", "YMD"), nformat("yyyy-mm-dd")
+putexcel C5 = (date("2024-12-31", "YMD") - td(30dec1899)), nformat("yyyy-mm-dd")
 putexcel B2 = "Results for 2024", bold font("Calibri", 14)
 putexcel B2:F2, merge hcenter
 ```
@@ -94,8 +94,8 @@ write_cells(
 | `putexcel C4 = 1250` | `C4 = 1250` |
 | `putexcel C4 = (r(mean))` | `C4 = mean(df$x)` |
 | `putexcel C4 = "text"` | `C4 = "text"` |
-| `putexcel B2 = matrix(M)` | `B2 = M` (a matrix; its row and column names too, if it has them) |
-| `putexcel B2 = matrix(M), names` | `B2 = M` with `dimnames(M)` set |
+| `putexcel B2 = matrix(M)` | `B2 = unname(M)` (values only) |
+| `putexcel B2 = matrix(M), names` | `B2 = M`: a matrix with row or column names writes them too |
 | `putexcel B2 = formula(SUM(A1:A5))` | `B2 = xl_formula("SUM(A1:A5)")` |
 | `putexcel C4, nformat("0.0%")` | `styles = list(C4 = xl_style(format = "0.0%"))` |
 | `putexcel A1:F1, bold` | `styles = list("A1:F1" = xl_style(bold = TRUE))` |
@@ -108,6 +108,10 @@ write_cells(
 Not translated: `putexcel ... = picture()` and `= etable`/`collect`
 tables. Write the table as a data frame first, then put it at a cell:
 `write_cells(path, sheet, B2 = tab)`.
+
+Stata counts dates in days from 1 January 1960 and Excel from
+30 December 1899, so a do-file that puts a date into a cell subtracts
+`td(30dec1899)`. An R `Date` needs nothing: `write_cells()` converts it.
 
 ## Files that Excel has open
 

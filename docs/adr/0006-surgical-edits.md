@@ -17,7 +17,10 @@ The parts a write may change:
   and cell formats that a new style needs (existing indices never move);
 - `xl/workbook.xml`, to add a sheet and to set `fullCalcOnLoad` so
   Excel recalculates formulas whose inputs changed;
-- for a new sheet, its relationship and content-type entries.
+- for a new sheet, its relationship and content-type entries;
+- an Excel table's definition (`xl/tables/tableN.xml`), only its `ref`
+  and its autofilter's `ref`, and its column names when the header row
+  is written, when `write_sheet()` writes a table into it.
 
 Text is written as inline strings, so the shared string table is never
 rewritten. The worksheet splice is tested against Table Viewer's
