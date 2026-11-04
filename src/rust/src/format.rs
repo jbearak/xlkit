@@ -3,8 +3,10 @@
 //!
 //! Excel shows a number as a date because of its number format, so xlkit
 //! decides the column type from the format, never from the value.
-//! Only the first section of a format is read: it is the one Excel uses
-//! for positive numbers, which dates always are.
+//! A format has up to four sections separated by `;`; the one Excel
+//! uses for a value is picked as Excel picks it (by `[<1]`-style
+//! conditions, else positive, negative, zero), so `[<1]yyyy-mm-dd;0`
+//! shows 0.5 as a date and 100 as a number.
 //!
 //! The section splitter's handling of quotes, `\` escapes and the `_` and
 //! `*` padding characters is adapted from Table Viewer's
@@ -36,25 +38,157 @@ const PLAIN: Format = Format {
     pad: 0,
 };
 
+/// A condition such as `[<1]` or `[>=100]` on a section.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Cond {
+    op: Op,
+    value: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Op {
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    Eq,
+    Ne,
+}
+
+impl Cond {
+    fn holds(&self, v: f64) -> bool {
+        match self.op {
+            Op::Lt => v < self.value,
+            Op::Le => v <= self.value,
+            Op::Gt => v > self.value,
+            Op::Ge => v >= self.value,
+            Op::Eq => v == self.value,
+            Op::Ne => v != self.value,
+        }
+    }
+}
+
+/// A number format's numeric sections, each with its condition.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Classified {
+    sections: Vec<(Option<Cond>, Format)>,
+}
+
+impl Classified {
+    /// The format Excel uses to show `v`.
+    pub fn for_value(&self, v: f64) -> Format {
+        let s = &self.sections;
+        if s.iter().any(|(c, _)| c.is_some()) {
+            // Conditional formats: the first section whose condition holds;
+            // a section without a condition takes what is left.
+            for (c, f) in s.iter().take(2) {
+                if let Some(c) = c {
+                    if c.holds(v) {
+                        return *f;
+                    }
+                }
+            }
+            return s
+                .iter()
+                .find(|(c, _)| c.is_none())
+                .or(s.last())
+                .map(|(_, f)| *f)
+                .unwrap_or(PLAIN);
+        }
+        match s.len() {
+            0 => PLAIN,
+            1 => s[0].1,
+            2 => s[if v < 0.0 { 1 } else { 0 }].1,
+            _ => {
+                s[if v > 0.0 {
+                    0
+                } else if v < 0.0 {
+                    1
+                } else {
+                    2
+                }]
+                .1
+            }
+        }
+    }
+}
+
 /// Classify a number format by its code, falling back on the built-in id
 /// for the locale-dependent East Asian date formats, whose code the file
 /// does not carry.
-pub fn classify(code: &str, id: Option<u32>) -> Format {
+pub fn classify(code: &str, id: Option<u32>) -> Classified {
     if code.is_empty() || code.eq_ignore_ascii_case("general") {
-        return match id {
+        let f = match id {
             Some(27..=36) | Some(50..=58) => Format {
                 kind: NumberKind::Date,
                 pad: 0,
             },
             _ => PLAIN,
         };
+        return Classified {
+            sections: vec![(None, f)],
+        };
     }
-    classify_section(first_section(code))
+    // A section with `@` is for text, never for numbers (`d-mmm-yy;@` shows
+    // every number with its first section), and so is the fourth.
+    let sections = split_sections(code)
+        .into_iter()
+        .take(3)
+        .filter(|sec| !is_text_section(sec))
+        .map(|sec| (condition(sec), classify_section(sec)))
+        .collect();
+    Classified { sections }
 }
 
-/// The text of `code` up to its first `;` that is not quoted, escaped,
-/// padding or inside brackets.
-fn first_section(code: &str) -> &str {
+/// Whether a section holds `@`, the text placeholder, outside quotes.
+fn is_text_section(section: &str) -> bool {
+    let mut quoted = false;
+    let mut escaped = false;
+    for ch in section.chars() {
+        if escaped {
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if ch == '"' {
+            quoted = !quoted;
+        } else if ch == '@' && !quoted {
+            return true;
+        }
+    }
+    false
+}
+
+/// The condition in a section's leading brackets, such as `[<1]`.
+fn condition(section: &str) -> Option<Cond> {
+    let mut rest = section;
+    while let Some(open) = rest.find('[') {
+        let close = rest[open..].find(']')? + open;
+        let inner = rest[open + 1..close].trim();
+        let ops = [
+            ("<=", Op::Le),
+            (">=", Op::Ge),
+            ("<>", Op::Ne),
+            ("<", Op::Lt),
+            (">", Op::Gt),
+            ("=", Op::Eq),
+        ];
+        for (text, op) in ops {
+            if let Some(num) = inner.strip_prefix(text) {
+                if let Ok(value) = num.trim().parse::<f64>() {
+                    return Some(Cond { op, value });
+                }
+            }
+        }
+        rest = &rest[close + 1..];
+    }
+    None
+}
+
+/// The sections of `code`: the text between `;`s that are not quoted,
+/// escaped, padding or inside brackets.
+fn split_sections(code: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut from = 0;
     let bytes = code.as_bytes();
     let mut quoted = false;
     let mut bracket = 0usize;
@@ -71,13 +205,17 @@ fn first_section(code: &str) -> &str {
                 b'"' => quoted = true,
                 b'[' => bracket += 1,
                 b']' => bracket = bracket.saturating_sub(1),
-                b';' if bracket == 0 => return &code[..i],
+                b';' if bracket == 0 => {
+                    out.push(&code[from..i]);
+                    from = i + 1;
+                }
                 _ => {}
             }
         }
         i += 1;
     }
-    code
+    out.push(&code[from..]);
+    out
 }
 
 fn classify_section(section: &str) -> Format {
@@ -151,6 +289,8 @@ fn classify_section(section: &str) -> Format {
             }
         } else if ch == '0' {
             digits_only.push('0');
+        } else if ch == '-' && digits_only.is_empty() {
+            // A sign before the digits, as in the negative section -00000.
         } else {
             other = true;
         }
@@ -205,7 +345,22 @@ mod tests {
     use super::*;
 
     fn kind(code: &str) -> NumberKind {
-        classify(code, None).kind
+        classify(code, None).for_value(1.0).kind
+    }
+
+    fn kind_of(code: &str, v: f64) -> NumberKind {
+        classify(code, None).for_value(v).kind
+    }
+
+    #[test]
+    fn the_section_is_picked_by_value() {
+        assert_eq!(kind_of("[<1]yyyy-mm-dd;0", 0.5), NumberKind::Date);
+        assert_eq!(kind_of("[<1]yyyy-mm-dd;0", 100.0), NumberKind::Number);
+        assert_eq!(kind_of("0;yyyy-mm-dd", -3.0), NumberKind::Date);
+        assert_eq!(kind_of("0;0;yyyy-mm-dd", 0.0), NumberKind::Date);
+        assert_eq!(kind_of("0;0;yyyy-mm-dd", 2.0), NumberKind::Number);
+        assert_eq!(kind_of("d-mmm-yy;@", -1.0), NumberKind::Date);
+        assert_eq!(classify("00000;-00000", None).for_value(-42.0).pad, 5);
     }
 
     #[test]
@@ -258,18 +413,27 @@ mod tests {
 
     #[test]
     fn zero_padding() {
-        assert_eq!(classify("00000", None).pad, 5);
-        assert_eq!(classify("000", None).pad, 3);
-        assert_eq!(classify("0", None).pad, 0);
-        assert_eq!(classify("0.00", None).pad, 0);
-        assert_eq!(classify("#,##0", None).pad, 0);
-        assert_eq!(classify("00000;-00000", None).pad, 5);
+        assert_eq!(classify("00000", None).for_value(1.0).pad, 5);
+        assert_eq!(classify("000", None).for_value(1.0).pad, 3);
+        assert_eq!(classify("0", None).for_value(1.0).pad, 0);
+        assert_eq!(classify("0.00", None).for_value(1.0).pad, 0);
+        assert_eq!(classify("#,##0", None).for_value(1.0).pad, 0);
+        assert_eq!(classify("00000;-00000", None).for_value(1.0).pad, 5);
     }
 
     #[test]
     fn east_asian_builtins() {
-        assert_eq!(classify("General", Some(27)).kind, NumberKind::Date);
-        assert_eq!(classify("General", Some(57)).kind, NumberKind::Date);
-        assert_eq!(classify("General", Some(0)).kind, NumberKind::Number);
+        assert_eq!(
+            classify("General", Some(27)).for_value(1.0).kind,
+            NumberKind::Date
+        );
+        assert_eq!(
+            classify("General", Some(57)).for_value(1.0).kind,
+            NumberKind::Date
+        );
+        assert_eq!(
+            classify("General", Some(0)).for_value(1.0).kind,
+            NumberKind::Number
+        );
     }
 }

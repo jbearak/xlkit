@@ -373,6 +373,8 @@ name = "xlkit"
 version = "0.1.0"
 dependencies = [
  "calamine",
+ "quick-xml",
+ "zip",
 ]
 
 [[package]]

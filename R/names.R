@@ -39,11 +39,15 @@ make_col_names <- function(text, letters, rule) {
     return(list(names = finish_unique(u$names, letters, identity), repairs = u$repairs))
   }
   u <- uniquify(text, letters)
-  convert <- function(x) {
-    x <- if ("snake" %in% rule) snake_name(x) else if ("stata" %in% rule) stata_name(x) else x
+  case <- function(x) {
     if ("lower" %in% rule) x <- tolower(x)
     if ("upper" %in% rule) x <- toupper(x)
     x
+  }
+  # Stata's checks come after the case, so c("stata", "lower") cannot
+  # turn IF into the reserved word if.
+  convert <- function(x) {
+    if ("snake" %in% rule) case(snake_name(x)) else if ("stata" %in% rule) stata_name(case(x)) else case(x)
   }
   out <- convert(u$names)
   # A rule can make a name empty ("%" under "stata"); use the letter.

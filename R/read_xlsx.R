@@ -94,6 +94,8 @@ read_one <- function(path, sheet, range, header, names, types, na, dates, call, 
   if (!is.null(range)) {
     r <- parse_range(range, call)
     if (!is.null(r$name)) r <- resolve_name(r$name, full, call)
+    # An Excel table made without a header row has none to read.
+    if (identical(r$table_header_rows, 0L) && isTRUE(header)) header <- FALSE
     if (!is.null(r$sheet)) sheet <- r$sheet
   }
   sheet_name <- resolve_sheet(sheet, info, file, call)

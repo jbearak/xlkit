@@ -34,7 +34,7 @@ parse_range <- function(range, call) {
       out$r1 <- as.numeric(sub(cell_pattern, "\\2", parts))
       out$c1 <- col_number(sub(cell_pattern, "\\1", parts))
       out$form <- "corner"
-    } else if (grepl("^[A-Za-z_\\\\][A-Za-z0-9_.\\\\]*$", parts) && is.null(sheet)) {
+    } else if (grepl("^[\\p{L}_\\\\][\\p{L}\\p{N}_.\\\\]*$", parts, perl = TRUE) && is.null(sheet)) {
       return(list(name = parts, text = range))
     } else {
       bad()
@@ -113,7 +113,8 @@ resolve_name <- function(name, path, call) {
   }
   n <- names[hit[[1]], ]
   if (!nzchar(n$formula)) {
-    return(list(sheet = n$sheet, r1 = n$r1, c1 = n$c1, r2 = n$r2, c2 = n$c2, form = "cells", text = name))
+    return(list(sheet = n$sheet, r1 = n$r1, c1 = n$c1, r2 = n$r2, c2 = n$c2, form = "cells", text = name,
+                table_header_rows = n$header_rows))
   }
   formula <- sub("^=", "", n$formula)
   r <- tryCatch(parse_range(formula, call = NULL), error = function(e) NULL)

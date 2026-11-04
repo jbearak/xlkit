@@ -57,16 +57,24 @@ number_text <- function(x, pad = integer(length(x))) {
   far <- !is.na(x) & x != 0 & (abs(x) >= 1e15 | abs(x) < 1e-9)
   if (any(far)) out[far] <- sprintf("%.15g", x[far])
   padded <- pad > 0 & !is.na(x) & x == round(x) & abs(x) < 1e15
-  if (any(padded)) out[padded] <- sprintf("%0*.0f", pad[padded], x[padded])
+  # Pad the digits, not the sign: -42 formatted 00000 shows as -00042.
+  if (any(padded)) {
+    out[padded] <- paste0(ifelse(x[padded] < 0, "-", ""), sprintf("%0*.0f", pad[padded], abs(x[padded])))
+  }
   out
 }
 
-hms_text <- function(secs, hours_over_24 = FALSE) {
-  secs <- round(secs)
+# Whole milliseconds as h:mm:ss, with .mmm when they are not whole seconds.
+hms_text <- function(ms, hours_over_24 = FALSE) {
+  ms <- round(ms)
+  secs <- ms %/% 1000
+  frac <- ms %% 1000
   h <- secs %/% 3600
   m <- (secs %% 3600) %/% 60
   s <- secs %% 60
-  sprintf(if (hours_over_24) "%d:%02d:%02d" else "%02d:%02d:%02d", h, m, s)
+  out <- sprintf(if (hours_over_24) "%d:%02d:%02d" else "%02d:%02d:%02d", h, m, s)
+  out[frac > 0] <- paste0(out[frac > 0], sprintf(".%03d", frac[frac > 0]))
+  out
 }
 
 # Each cell as text, as Excel shows it (NA for an empty cell): numbers
@@ -91,16 +99,18 @@ cell_text <- function(cells, is_1904) {
   }
   dt <- kind == K_DATETIME
   if (any(dt)) {
-    secs <- round(serial_seconds(num[dt], is_1904))
-    txt <- format(.POSIXct(secs, tz = "UTC"), "%Y-%m-%d %H:%M:%S")
-    leap <- is_leap_day(num[dt], is_1904)
-    txt[leap] <- paste("1900-02-29", hms_text(day_seconds(num[dt][leap])))
-    out[dt] <- txt
+    # Split into days and milliseconds after rounding, so 23:59:59.9996
+    # becomes the next day's 00:00:00 rather than this day's.
+    ms <- round(num[dt] * 86400000)
+    day <- ms %/% 86400000
+    txt <- format(new_date(floor(serial_days(day, is_1904))), "%Y-%m-%d")
+    txt[is_leap_day(day, is_1904)] <- "1900-02-29"
+    out[dt] <- paste(txt, hms_text(ms %% 86400000))
   }
   tm <- kind == K_TIME
-  if (any(tm)) out[tm] <- hms_text(day_seconds(num[tm]))
+  if (any(tm)) out[tm] <- hms_text(round((num[tm] - floor(num[tm])) * 86400000) %% 86400000)
   du <- kind == K_DURATION
-  if (any(du)) out[du] <- hms_text(round(num[du] * 86400, 3), hours_over_24 = TRUE)
+  if (any(du)) out[du] <- hms_text(round(num[du] * 86400000), hours_over_24 = TRUE)
   out
 }
 

@@ -12,6 +12,9 @@ path = "src/lib.rs"
 [dependencies]
 # Pinned exactly; Cargo.lock pins its dependencies.
 calamine = "=0.38.0"
+# Both are calamine's own dependencies; xlkit reads table parts with them.
+quick-xml = "0.42"
+zip = { version = "9.3", default-features = false }
 
 [workspace]
 

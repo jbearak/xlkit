@@ -44,16 +44,29 @@ static void finalize(SEXP ptr) {
   }
 }
 
-/* Take ownership of `res`, copy it into an R list and free it. */
-static SEXP to_r(XlResult res) {
-  XlResult *r = (XlResult *) malloc(sizeof(XlResult));
-  if (!r) {
-    xl_result_free(&res);
-    Rf_error("xlkit: out of memory");
-  }
-  *r = res;
-  SEXP ptr = PROTECT(R_MakeExternalPtr(r, R_NilValue, R_NilValue));
+/* The owner of a Rust result: an external pointer whose finalizer frees
+ * it, made (and protected) before Rust runs, with space for the result.
+ * Everything here that can fail does so before Rust has allocated. */
+static SEXP new_owner(XlResult **slot) {
+  SEXP ptr = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
   R_RegisterCFinalizerEx(ptr, finalize, TRUE);
+  *slot = (XlResult *) malloc(sizeof(XlResult));
+  if (!*slot) Rf_error("xlkit: out of memory");
+  UNPROTECT(1);
+  return ptr;
+}
+
+/* Hand Rust's result to its owner. Neither step allocates through R, so
+ * from here every R error leaves the result to the finalizer. */
+static void own(SEXP ptr, XlResult *slot, XlResult res) {
+  *slot = res;
+  R_SetExternalPtrAddr(ptr, slot);
+}
+
+/* Copy the owned result into an R list, then free it. `ptr` is protected
+ * by the caller. */
+static SEXP to_r(SEXP ptr) {
+  XlResult *r = (XlResult *) R_ExternalPtrAddr(ptr);
 
   SEXP out;
   if (r->status != 0) {
@@ -96,7 +109,7 @@ static SEXP to_r(XlResult res) {
     }
   }
   finalize(ptr);
-  UNPROTECT(3);
+  UNPROTECT(2);
   return out;
 }
 
@@ -106,12 +119,36 @@ static const char *utf8(SEXP x, const char *what) {
   return Rf_translateCharUTF8(STRING_ELT(x, 0));
 }
 
-static SEXP C_xl_info(SEXP path) { return to_r(xl_info(utf8(path, "path"))); }
-static SEXP C_xl_names(SEXP path) { return to_r(xl_names(utf8(path, "path"))); }
+/* Each entry point converts its arguments and makes the owner before
+ * calling Rust, so nothing allocates between Rust returning and R
+ * owning the result. */
+static SEXP C_xl_info(SEXP path) {
+  const char *p = utf8(path, "path");
+  XlResult *slot;
+  SEXP ptr = PROTECT(new_owner(&slot));
+  own(ptr, slot, xl_info(p));
+  SEXP out = to_r(ptr);
+  UNPROTECT(1);
+  return out;
+}
+static SEXP C_xl_names(SEXP path) {
+  const char *p = utf8(path, "path");
+  XlResult *slot;
+  SEXP ptr = PROTECT(new_owner(&slot));
+  own(ptr, slot, xl_names(p));
+  SEXP out = to_r(ptr);
+  UNPROTECT(1);
+  return out;
+}
 static SEXP C_xl_read(SEXP path, SEXP sheet) {
   const char *p = utf8(path, "path");
   const char *s = utf8(sheet, "sheet");
-  return to_r(xl_read(p, s));
+  XlResult *slot;
+  SEXP ptr = PROTECT(new_owner(&slot));
+  own(ptr, slot, xl_read(p, s));
+  SEXP out = to_r(ptr);
+  UNPROTECT(1);
+  return out;
 }
 
 static const R_CallMethodDef calls[] = {

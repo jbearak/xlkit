@@ -8,6 +8,7 @@
 //! unwinds into C.
 
 mod format;
+mod package;
 mod read;
 
 use std::ffi::{c_char, CStr, CString};
@@ -139,7 +140,7 @@ pub extern "C" fn xl_info(path: *const c_char) -> XlResult {
 }
 
 /// Defined names and Excel tables: strings are `name, sheet, formula`
-/// for each; ints are four per name (see `read::Named`).
+/// for each; ints are five per name (see `read::Named`).
 #[no_mangle]
 pub extern "C" fn xl_names(path: *const c_char) -> XlResult {
     run(&[path], |a| {

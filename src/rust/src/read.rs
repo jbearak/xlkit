@@ -5,7 +5,7 @@
 //! for each cell, with the Excel row and column of the top-left cell.
 //! R decides the column types from these.
 
-use crate::format::{classify, Format, NumberKind};
+use crate::format::{classify, Classified, Format, NumberKind};
 use calamine::{Data, Reader, SheetType, Xlsx, XlsxError};
 use std::collections::HashMap;
 use std::fs::File;
@@ -112,13 +112,14 @@ pub struct Named {
     /// For a defined name, its formula as the file has it (R parses it);
     /// empty for a table.
     pub formula: String,
-    /// For a table: first row (its header), first column, last row, last
-    /// column. Zeros for a defined name.
-    pub dims: [i32; 4],
+    /// For a table: first row, first column, last row (above any totals
+    /// row), last column, and the number of header rows (0 or 1). Zeros for
+    /// a defined name.
+    pub dims: [i32; 5],
 }
 
 pub fn names(path: &str) -> Result<Vec<Named>, Failure> {
-    let mut wb = open(path)?;
+    let wb = open(path)?;
     let mut out: Vec<Named> = wb
         .defined_names()
         .iter()
@@ -126,28 +127,21 @@ pub fn names(path: &str) -> Result<Vec<Named>, Failure> {
             name: name.clone(),
             sheet: String::new(),
             formula: formula.clone(),
-            dims: [0; 4],
+            dims: [0; 5],
         })
         .collect();
-    wb.load_tables().map_err(failure)?;
-    let tables: Vec<String> = wb.table_names().into_iter().cloned().collect();
-    for name in tables {
-        let table = wb.table_by_name(&name).map_err(failure)?;
-        let data = table.data();
-        // calamine gives the table's body; its header row is the row above.
-        let (start, end) = match (data.start(), data.end()) {
-            (Some(s), Some(e)) => (s, e),
-            _ => continue,
-        };
+    for t in crate::package::tables(path)? {
+        // The body drops a totals row; a table without a header row says so.
         out.push(Named {
-            name: table.name().to_string(),
-            sheet: table.sheet_name().to_string(),
+            name: t.name,
+            sheet: t.sheet,
             formula: String::new(),
             dims: [
-                start.0 as i32,
-                start.1 as i32 + 1,
-                end.0 as i32 + 1,
-                end.1 as i32 + 1,
+                t.cells[0],
+                t.cells[1],
+                t.cells[2] - t.totals_rows.max(0),
+                t.cells[3],
+                t.header_rows.max(0),
             ],
         });
     }
@@ -219,7 +213,7 @@ pub fn read_sheet(path: &str, sheet: &str) -> Result<Grid, Failure> {
 
     // Classify each cell, then crop to the cells that hold something:
     // calamine's range can include text that is only spaces.
-    let mut cache: HashMap<(String, Option<u32>), Format> = HashMap::new();
+    let mut cache: HashMap<(String, Option<u32>), Classified> = HashMap::new();
     let mut cells: Vec<(u8, u8, f64, String)> = Vec::with_capacity(height * width);
     let (mut r0, mut c0, mut r1, mut c1) = (usize::MAX, usize::MAX, 0usize, 0usize);
     for r in 0..height {
@@ -228,12 +222,13 @@ pub fn read_sheet(path: &str, sheet: &str) -> Result<Grid, Failure> {
             let cell = match range.get((r, c)) {
                 Some(value) => convert(
                     value,
-                    || {
+                    |v| {
                         let style = styles.get(pos).and_then(|s| s.number_format.as_ref());
                         match style {
-                            Some(nf) => *cache
+                            Some(nf) => cache
                                 .entry((nf.format_code.clone(), nf.format_id))
-                                .or_insert_with(|| classify(&nf.format_code, nf.format_id)),
+                                .or_insert_with(|| classify(&nf.format_code, nf.format_id))
+                                .for_value(v),
                             None => Format {
                                 kind: NumberKind::Number,
                                 pad: 0,
@@ -281,13 +276,17 @@ pub fn read_sheet(path: &str, sheet: &str) -> Result<Grid, Failure> {
 
 /// One cell as (kind, pad, number, text). `format` gives the cell's
 /// number format; it is looked up only for numbers.
-fn convert(value: &Data, format: impl FnOnce() -> Format, is_1904: bool) -> (u8, u8, f64, String) {
+fn convert(
+    value: &Data,
+    format: impl FnOnce(f64) -> Format,
+    is_1904: bool,
+) -> (u8, u8, f64, String) {
     let number = |x: f64, format: Format| (format.kind as u8, format.pad, x, String::new());
     match value {
         Data::Empty => (EMPTY, 0, f64::NAN, String::new()),
-        Data::Float(x) => number(*x, format()),
-        Data::Int(x) => number(*x as f64, format()),
-        Data::DateTime(d) => number(d.as_f64(), format()),
+        Data::Float(x) => number(*x, format(*x)),
+        Data::Int(x) => number(*x as f64, format(*x as f64)),
+        Data::DateTime(d) => number(d.as_f64(), format(d.as_f64())),
         Data::Bool(b) => (BOOL, 0, if *b { 1.0 } else { 0.0 }, String::new()),
         Data::Error(e) => (ERROR, 0, f64::NAN, e.to_string()),
         Data::String(s) => {
@@ -463,7 +462,7 @@ mod tests {
         let named = names(&path).unwrap();
         let table = named.iter().find(|n| n.name == "SalesTable").unwrap();
         assert_eq!(table.sheet, "Sales 2024");
-        assert_eq!(table.dims, [5, 2, 40, 6]);
+        assert_eq!(table.dims, [5, 2, 40, 6, 1]);
         let regions = named.iter().find(|n| n.name == "RegionList").unwrap();
         assert_eq!(regions.formula, "Regions!$A$1:$C$6");
     }

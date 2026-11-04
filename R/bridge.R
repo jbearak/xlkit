@@ -79,10 +79,11 @@ workbook_names <- function(path, call) {
   if (!is.null(res$status)) rust_failed(res, path, call)
   n <- length(res$strings) %/% 3
   s <- matrix(res$strings, nrow = 3)
-  d <- matrix(res$ints, nrow = 4)
+  d <- matrix(res$ints, nrow = 5)
   data.frame(
     name = s[1, seq_len(n)], sheet = s[2, seq_len(n)], formula = s[3, seq_len(n)],
     r1 = d[1, seq_len(n)], c1 = d[2, seq_len(n)], r2 = d[3, seq_len(n)], c2 = d[4, seq_len(n)],
+    header_rows = d[5, seq_len(n)],
     stringsAsFactors = FALSE
   )
 }

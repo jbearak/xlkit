@@ -418,6 +418,46 @@ def edge1904():
     save(wb, os.path.join(FIXTURES, "edge1904.xlsx"))
 
 
+def review():
+    """Cases from the first review: tables without a header row or with only
+    one, fractional seconds, conditional number formats, signed padding,
+    reserved Stata words and a defined name in another script."""
+    from openpyxl.workbook.defined_name import DefinedName
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Tables"
+    ws["A1"] = "a title above the tables"
+    ws["A2"], ws["B2"] = 1, 2
+    ws["A3"], ws["B3"] = 3, 4
+    ws.add_table(Table(displayName="NoHeader", ref="A2:B3", headerRowCount=0))
+    ws["D2"], ws["E2"] = "left", "right"
+    ws.add_table(Table(displayName="OnlyHeader", ref="D2:E2"))
+    wb.defined_names["Donn\u00e9es"] = DefinedName("Donn\u00e9es", attr_text="Tables!$A$2:$B$3")
+
+    ws = wb.create_sheet("Stamps")
+    ws["A1"] = "stamp"
+    ws["A2"] = dt.datetime(2024, 1, 1, 0, 0, 0, 125000)
+    ws["A2"].number_format = "yyyy-mm-dd hh:mm:ss.000"
+    ws["A3"] = "unknown"
+
+    ws = wb.create_sheet("Conditional")
+    ws["A1"] = "x"
+    for i, v in enumerate([100, 250], start=2):
+        ws.cell(row=i, column=1, value=v).number_format = "[<1]yyyy-mm-dd;0"
+
+    ws = wb.create_sheet("Padded")
+    ws["A1"] = "code"
+    for i, v in enumerate([-42, 7], start=2):
+        ws.cell(row=i, column=1, value=v).number_format = "00000"
+
+    ws = wb.create_sheet("Reserved")
+    ws["A1"], ws["B1"] = "IF", "FLOAT"
+    ws["A2"], ws["B2"] = 1, 2
+
+    save(wb, os.path.join(FIXTURES, "review.xlsx"))
+
+
 def main():
     os.makedirs(EXTDATA, exist_ok=True)
     os.makedirs(FIXTURES, exist_ok=True)
@@ -429,6 +469,7 @@ def main():
     template()
     edge()
     edge1904()
+    review()
 
 
 if __name__ == "__main__":
