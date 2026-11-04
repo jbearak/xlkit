@@ -136,7 +136,10 @@ stata_name <- function(x, cut = TRUE) {
   x <- gsub("[^A-Za-z0-9_]+", "_", x)
   x <- gsub("^_+|_+$", "", x)
   x <- ifelse(grepl("^[0-9]", x) | x %in% stata_reserved, paste0("_", x), x)
-  if (cut) substr(x, 1, 32) else x
+  if (!cut) return(x)
+  # The cut can end on a run of other characters; drop its "_" there too.
+  out <- sub("_+$", "", substr(x, 1, 32))
+  ifelse(nzchar(out), out, substr(x, 1, 32))
 }
 
 # The message for repairs, naming the header cells and the new names.

@@ -120,3 +120,8 @@ test_that("a names function must return one name per header", {
     "must return a character vector as long as its input"
   )
 })
+
+test_that("a Stata name cut to 32 characters does not end in an underscore", {
+  expect_identical(xlkit:::stata_name("Children ever born to the woman, by age"), "Children_ever_born_to_the_woman")
+  expect_identical(nchar(xlkit:::stata_name(strrep("a", 40))), 32L)
+})
