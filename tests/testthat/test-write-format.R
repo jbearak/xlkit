@@ -299,3 +299,11 @@ test_that("fractions in one column do not hide a percent mistake in another", {
     "H1 and H2 have values such as 25"
   )
 })
+
+test_that("columns of cells with the same percent mistake share one message", {
+  path <- temp_copy(xlkit_example("template.xlsx"))
+  expect_snapshot(
+    write_cells(path, "Cover", H1 = matrix(c(25, 40, 30, 50), 2), J1 = c(0.25, 0.4),
+                styles = list("H1:J2" = xl_style(format = "0%")))
+  )
+})

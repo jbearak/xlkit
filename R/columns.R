@@ -293,7 +293,8 @@ percent_messages <- function(blocks, format_of, first = 0, label = identity) {
       hit <- num[!is.na(fmts) & fmts == f]
       whole <- !is.null(blk$column) && length(hit) == length(num)
       # Each column of cells is judged on its own, so fractions in one
-      # column do not hide numbers written as percents in another.
+      # column do not hide numbers written as percents in another; the
+      # columns judged alike are then named in one message.
       key <- if (whole) paste0("column:", length(groups)) else paste0("cells:", b, ":", f)
       g <- groups[[key]]
       if (is.null(g)) g <- list(format = f, column = if (whole) blk$column, rows = numeric(), cols = numeric(), v = numeric())
@@ -303,8 +304,21 @@ percent_messages <- function(blocks, format_of, first = 0, label = identity) {
       groups[[key]] <- g
     }
   }
+  judged <- list()
+  for (key in names(groups)) {
+    g <- groups[[key]]
+    if (is.null(percent_message("", g$v, g$format))) next
+    if (!is.null(g$column)) {
+      judged[[key]] <- g
+      next
+    }
+    merged <- paste0("cells:", g$format)
+    h <- judged[[merged]]
+    if (!is.null(h)) g[c("rows", "cols", "v")] <- Map(c, h[c("rows", "cols", "v")], g[c("rows", "cols", "v")])
+    judged[[merged]] <- g
+  }
   out <- list()
-  for (g in groups) {
+  for (g in judged) {
     o <- order(g$rows, g$cols)
     what <- if (!is.null(g$column)) paste0("`", g$column, "`") else and_list_first(cell_ref(g$rows[o], g$cols[o]))
     verb <- if (is.null(g$column) && length(o) > 1) "have" else "has"
