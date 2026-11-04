@@ -149,14 +149,14 @@ List the sheets, in tab order:
 ```r
 path <- xlkit_example("sales.xlsx")
 xlsx_sheets(path)
-#> [1] "Summary"    "Sales 2022" "Sales 2023" "Sales 2024" "Notes"
+#> [1] "Summary"    "Sales 2023" "Sales 2024" "Regions"    "Notes"
 ```
 
 Pick a sheet by its name or its position (counting tabs from 1):
 
 ```r
 read_xlsx(path, sheet = "Sales 2024")
-read_xlsx(path, sheet = 4)
+read_xlsx(path, sheet = 3)
 ```
 
 A name that is not in the workbook stops with the names that are:
@@ -166,7 +166,7 @@ read_xlsx(path, sheet = "Sales 2042")
 #> Error in `read_xlsx()`:
 #> ! sales.xlsx has no sheet "Sales 2042".
 #> ℹ Did you mean "Sales 2024"?
-#> ℹ Its sheets are "Summary", "Sales 2022", "Sales 2023", "Sales 2024" and "Notes".
+#> ℹ Its sheets are "Summary", "Sales 2023", "Sales 2024", "Regions" and "Notes".
 ```
 
 `Sales 2024` has a title in `B1`, a note in `B2` and its table in
@@ -436,12 +436,12 @@ reads as `"#N/A"`, without a warning.
 ```r
 all <- read_sheets(xlkit_example("sales.xlsx"))
 names(all)
-#> [1] "Summary"    "Sales 2022" "Sales 2023" "Sales 2024" "Notes"
+#> [1] "Summary"    "Sales 2023" "Sales 2024" "Regions"    "Notes"
 all[["Sales 2024"]]
 ```
 
 It takes `read_xlsx()`'s arguments (except `sheet`) and uses them for
-every sheet. `sheets = c("Sales 2022", "Sales 2023")` reads some; a
+every sheet. `sheets = c("Sales 2023", "Sales 2024")` reads some; a
 regular expression does too: `sheets = "^Sales"`. Each tibble keeps its
 own `xlsx_problems()`. An empty sheet gives a tibble with no rows and
 no columns, as in `read_xlsx()`. To stack sheets with the same columns
