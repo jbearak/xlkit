@@ -32,8 +32,10 @@ FIXTURES = os.path.join(ROOT, "tests", "testthat", "fixtures")
 FIXED = dt.datetime(2024, 1, 1, 0, 0, 0)
 
 
-def save(wb, path):
-    """Save `wb` to `path` with fixed dates, so the bytes are reproducible."""
+def save(wb, path, change=None, add=()):
+    """Save `wb` to `path` with fixed dates, so the bytes are reproducible.
+    `change(name, data)` may rewrite a part; `add` is (name, data) parts
+    to add after the others."""
     wb.properties.creator = "xlkit tools/make-examples.py"
     wb.properties.created = FIXED
     wb.properties.modified = FIXED
@@ -50,7 +52,13 @@ def save(wb, path):
                     rb"\g<1>2024-01-01T00:00:00Z\g<2>",
                     data,
                 )
+            if change is not None:
+                data = change(info.filename, data)
             fixed = zipfile.ZipInfo(info.filename, date_time=(2024, 1, 1, 0, 0, 0))
+            fixed.compress_type = zipfile.ZIP_DEFLATED
+            out.writestr(fixed, data)
+        for name, data in add:
+            fixed = zipfile.ZipInfo(name, date_time=(2024, 1, 1, 0, 0, 0))
             fixed.compress_type = zipfile.ZIP_DEFLATED
             out.writestr(fixed, data)
     print("wrote", os.path.relpath(path, ROOT))
@@ -458,6 +466,155 @@ def review():
     save(wb, os.path.join(FIXTURES, "review.xlsx"))
 
 
+# A 1x1 PNG, for an image in a drawing (openpyxl's images need Pillow).
+PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+    "1f15c4890000000d49444154789c63f8cfc0f01f0005000201a5b8b1f30000000049454e44ae426082"
+)
+
+
+def features():
+    """A template with the parts a load-and-save library may drop, for the
+    tests of write_sheet() and write_cells(): a comment, a conditional
+    format, data validation, defined names (one a print area), a merged
+    title, a formula with a calculation chain, an Excel table, a chart
+    that plots the table, a chart over a fixed range, and an image. Also
+    written as a macro-enabled workbook without macros (.xlsm)."""
+    from openpyxl.chart import LineChart
+    from openpyxl.comments import Comment
+    from openpyxl.formatting.rule import CellIsRule
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Report"
+    ws["A1"] = "Quarterly report"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws.merge_cells("A1:D1")
+    ws["A3"], ws["A4"], ws["A5"] = "Total", "As of", "Approved"
+    ws["B3"] = "=SUM(Data!B2:B13)"
+    ws["B3"].number_format = "#,##0"
+    thin = Side(style="thin", color="808080")
+    ws["B4"].number_format = "#,##0.00"
+    ws["B4"].font = Font(italic=True, color="C00000")
+    ws["B4"].fill = PatternFill("solid", fgColor="FFF2CC")
+    ws["B4"].border = Border(top=thin, bottom=thin, left=thin, right=thin)
+    ws["A3"].comment = Comment("Filled in by the script.", "xlkit")
+    ws.conditional_formatting.add(
+        "B3:B10", CellIsRule(operator="greaterThan", formula=["100"], fill=PatternFill("solid", fgColor="FFC7CE"))
+    )
+    dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add("B5")
+    ws.column_dimensions["A"].width = 14
+    ws.print_area = "A1:D20"
+    wb.defined_names["Total"] = DefinedName("Total", attr_text="Report!$B$3")
+
+    data = wb.create_sheet("Data")
+    header(data, 1, 1, ["month", "value"], bold=False)
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    for i, month in enumerate(months, start=2):
+        data.cell(row=i, column=1, value=month)
+        data.cell(row=i, column=2, value=10 * i)
+        data.cell(row=i, column=4, value=i)
+        data.cell(row=i, column=5, value=i * i)
+    data["D1"], data["E1"] = "x", "y"
+    data.add_table(Table(displayName="Sales", ref="A1:B13",
+                         tableStyleInfo=TableStyleInfo(name="TableStyleMedium9", showRowStripes=True)))
+
+    bars = BarChart()
+    bars.title = "Sales"
+    bars.add_data(Reference(data, min_col=2, min_row=1, max_row=13), titles_from_data=True)
+    bars.set_categories(Reference(data, min_col=1, min_row=2, max_row=13))
+    ws.add_chart(bars, "F2")
+    lines = LineChart()
+    lines.title = "Fixed range"
+    lines.add_data(Reference(data, min_col=5, min_row=1, max_row=13), titles_from_data=True)
+    lines.set_categories(Reference(data, min_col=4, min_row=2, max_row=13))
+    data.add_chart(lines, "G2")
+
+    pic = (
+        '<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>20</xdr:row>'
+        '<xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="952500" cy="952500"/><xdr:pic><xdr:nvPicPr>'
+        '<xdr:cNvPr id="9" name="Logo"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill>'
+        '<a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdImg1"/>'
+        '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:prstGeom prst="rect"><a:avLst/>'
+        '</a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>'
+    )
+    chain = (
+        b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        b'<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="B3" i="1"/></calcChain>'
+    )
+
+    def change(name, data, macro=False):
+        if name == "xl/drawings/drawing1.xml":
+            data = data.replace(b"</xdr:wsDr>", pic.encode() + b"</xdr:wsDr>")
+        elif name == "xl/drawings/_rels/drawing1.xml.rels":
+            data = data.replace(b"</Relationships>", (
+                b'<Relationship Id="rIdImg1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+                b'relationships/image" Target="../media/image1.png"/></Relationships>'))
+        elif name == "xl/_rels/workbook.xml.rels":
+            data = data.replace(b"</Relationships>", (
+                b'<Relationship Id="rIdChain" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+                b'relationships/calcChain" Target="calcChain.xml"/></Relationships>'))
+        elif name == "[Content_Types].xml":
+            data = data.replace(b"</Types>", (
+                b'<Default Extension="png" ContentType="image/png"/><Override PartName="/xl/calcChain.xml" '
+                b'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/></Types>'))
+            if macro:
+                data = data.replace(
+                    b"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+                    b"application/vnd.ms-excel.sheet.macroEnabled.main+xml")
+        return data
+
+    add = [("xl/media/image1.png", PNG), ("xl/calcChain.xml", chain)]
+    save(wb, os.path.join(FIXTURES, "features.xlsx"), change, add)
+    save(wb, os.path.join(FIXTURES, "features.xlsm"), lambda n, d: change(n, d, macro=True), add)
+
+
+def unsafe():
+    """A worksheet whose second cell has no reference (r), whose place only
+    the order of the cells gives: write_cells() must refuse it."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws["A1"], ws["B1"] = 1, 2
+
+    def change(name, data):
+        if name == "xl/worksheets/sheet1.xml":
+            data = data.replace(b'<c r="B1"', b"<c", 1)
+        return data
+
+    save(wb, os.path.join(FIXTURES, "unsafe.xlsx"), change)
+
+
+def inherited():
+    """Cells without a style of their own in a styled column and a styled
+    row, which show the column's or the row's format."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.column_dimensions["A"].font = Font(italic=True)
+    ws.column_dimensions["A"].fill = PatternFill("solid", fgColor="FFFF00")
+    ws["A1"] = 5
+    ws.row_dimensions[3].font = Font(bold=True)
+    ws["B3"] = 7
+    path = os.path.join(FIXTURES, "inherited.xlsx")
+    save(wb, path)
+    # The same workbook with the row's flag spelled "true", which the
+    # schema allows as well as "1".
+    src = zipfile.ZipFile(path)
+    out_path = os.path.join(FIXTURES, "inherited-true.xlsx")
+    with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as out:
+        for info in src.infolist():
+            data = src.read(info.filename)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                assert b'customFormat="1"' in data
+                data = data.replace(b'customFormat="1"', b'customFormat="true"')
+            out.writestr(info, data)
+    print("wrote", os.path.relpath(out_path, ROOT))
+
+
 def main():
     os.makedirs(EXTDATA, exist_ok=True)
     os.makedirs(FIXTURES, exist_ok=True)
@@ -470,6 +627,9 @@ def main():
     edge()
     edge1904()
     review()
+    features()
+    unsafe()
+    inherited()
 
 
 if __name__ == "__main__":

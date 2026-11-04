@@ -382,6 +382,7 @@ name = "xlkit"
 version = "0.1.0"
 dependencies = [
  "calamine",
+ "memchr",
  "quick-xml",
  "rust_xlsxwriter",
  "zip",

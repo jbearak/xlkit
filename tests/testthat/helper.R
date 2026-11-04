@@ -108,3 +108,56 @@ bare <- function(df) {
   })
   tibble::as_tibble(out)
 }
+
+# A copy of a workbook in a new temporary folder.
+temp_copy <- function(from, name = basename(from)) {
+  path <- temp_xlsx(name)
+  file.copy(from, path)
+  path
+}
+
+# The parts of an .xlsx package: a list of raw vectors named by part.
+zip_parts <- function(path) {
+  dir <- tempfile("xlkit-z-")
+  dir.create(dir)
+  names <- utils::unzip(path, list = TRUE)$Name
+  utils::unzip(path, exdir = dir)
+  out <- lapply(names, function(n) {
+    f <- file.path(dir, n)
+    readBin(f, "raw", file.size(f))
+  })
+  stats::setNames(out, names)
+}
+
+part_text <- function(parts, name) rawToChar(parts[[name]])
+
+# The parts that differ between two packages (and those only one has).
+changed_parts <- function(before, after) {
+  both <- intersect(names(before), names(after))
+  differ <- both[!vapply(both, function(n) identical(before[[n]], after[[n]]), logical(1))]
+  sort(c(differ, setdiff(names(before), both), setdiff(names(after), both)))
+}
+
+# A worksheet's XML without the given cells, without rows left empty, and
+# without what a write may change around them (ADR 0006): `spans`,
+# `<dimension>` and `<mergeCells>`. Equal for the sheet before and after
+# a write when every other byte was kept.
+outside_cells <- function(xml, cells) {
+  for (ref in cells) {
+    xml <- gsub(paste0('<c r="', ref, '"(\\s[^>]*?)?/>'), "", xml, perl = TRUE)
+    xml <- gsub(paste0('<c r="', ref, '"(\\s[^>]*?[^/])?>.*?</c>'), "", xml, perl = TRUE)
+  }
+  xml <- gsub(' spans="[^"]*"', "", xml)
+  xml <- gsub("<row [^>]*>\\s*</row>", "", xml, perl = TRUE)
+  xml <- gsub("<dimension [^>]*/>", "", xml)
+  gsub("<mergeCells.*?</mergeCells>", "", xml, perl = TRUE)
+}
+
+# Cell references of a rectangle, as Excel shows them.
+cells_of <- function(range) {
+  r <- xlkit:::parse_range(range, call = NULL)
+  r2 <- if (is.na(r$r2)) r$r1 else r$r2
+  c2 <- if (is.na(r$c2)) r$c1 else r$c2
+  g <- expand.grid(row = r$r1:r2, col = r$c1:c2)
+  paste0(xlkit:::col_letters(g$col), g$row)
+}

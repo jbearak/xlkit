@@ -9,7 +9,8 @@
  *
  * To write, C_xl_write() points an XlPlan at R's vectors (strings
  * translated to UTF-8 into memory R frees when the call ends) and Rust
- * only reads them while xl_write() runs.
+ * only reads them while xl_write() runs. C_xl_edit() does the same with an
+ * XlEditPlan for xl_edit(), which writes into an existing workbook.
  */
 #include <R.h>
 #include <Rinternals.h>
@@ -56,11 +57,32 @@ typedef struct {
   XlStrings strs;
 } XlPlan;
 
+/* The same fields, in the same order, as XlEditPlan in src/rust/src/lib.rs. */
+typedef struct {
+  XlInts fmt_ints;
+  XlDoubles fmt_size;
+  XlStrings fmt_font;
+  XlStrings fmt_numfmt;
+  XlStrings names;
+  XlInts ints;
+  XlInts width_cols;
+  XlDoubles width_vals;
+  XlInts merges;
+  XlInts blocks;
+  XlInts kinds;
+  XlInts fmts;
+  XlInts dclass;
+  XlDoubles nums;
+  XlStrings strs;
+  XlInts pieces;
+} XlEditPlan;
+
 XlResult xl_info(const char *path);
 XlResult xl_names(const char *path);
 XlResult xl_read(const char *path, const char *sheet);
 XlResult xl_create_new(const char *from, const char *to);
 XlResult xl_write(const char *path, const XlPlan *plan);
+XlResult xl_edit(const char *src, const char *dst, const XlEditPlan *plan);
 void xl_result_free(XlResult *r);
 
 static void finalize(SEXP ptr) {
@@ -251,12 +273,49 @@ static SEXP C_xl_write(SEXP path, SEXP plan) {
   return out;
 }
 
+/* The parts of an edit plan R made (R/edit.R, `edit_parts`), in order. */
+enum {
+  E_FMT_INTS, E_FMT_SIZE, E_FMT_FONT, E_FMT_NUMFMT, E_NAMES, E_INTS, E_WIDTH_COLS,
+  E_WIDTH_VALS, E_MERGES, E_BLOCKS, E_KINDS, E_FMTS, E_DCLASS, E_NUMS, E_STRS, E_PIECES,
+  E_N
+};
+
+static SEXP C_xl_edit(SEXP src, SEXP dst, SEXP plan) {
+  const char *s = utf8(src, "src");
+  const char *d = utf8(dst, "dst");
+  if (TYPEOF(plan) != VECSXP || XLENGTH(plan) != E_N) Rf_error("xlkit: the edit plan must be a list of %d parts", E_N);
+  XlEditPlan w;
+  w.fmt_ints = ints_of(plan, E_FMT_INTS);
+  w.fmt_size = doubles_of(plan, E_FMT_SIZE);
+  w.fmt_font = strings_of(plan, E_FMT_FONT);
+  w.fmt_numfmt = strings_of(plan, E_FMT_NUMFMT);
+  w.names = strings_of(plan, E_NAMES);
+  w.ints = ints_of(plan, E_INTS);
+  w.width_cols = ints_of(plan, E_WIDTH_COLS);
+  w.width_vals = doubles_of(plan, E_WIDTH_VALS);
+  w.merges = ints_of(plan, E_MERGES);
+  w.blocks = ints_of(plan, E_BLOCKS);
+  w.kinds = ints_of(plan, E_KINDS);
+  w.fmts = ints_of(plan, E_FMTS);
+  w.dclass = ints_of(plan, E_DCLASS);
+  w.nums = doubles_of(plan, E_NUMS);
+  w.strs = strings_of(plan, E_STRS);
+  w.pieces = ints_of(plan, E_PIECES);
+  XlResult *slot;
+  SEXP ptr = PROTECT(new_owner(&slot));
+  own(ptr, slot, xl_edit(s, d, &w));
+  SEXP out = to_r(ptr);
+  UNPROTECT(1);
+  return out;
+}
+
 static const R_CallMethodDef calls[] = {
   {"C_xl_info", (DL_FUNC) &C_xl_info, 1},
   {"C_xl_names", (DL_FUNC) &C_xl_names, 1},
   {"C_xl_read", (DL_FUNC) &C_xl_read, 2},
   {"C_xl_write", (DL_FUNC) &C_xl_write, 2},
   {"C_xl_create_new", (DL_FUNC) &C_xl_create_new, 2},
+  {"C_xl_edit", (DL_FUNC) &C_xl_edit, 3},
   {NULL, NULL, 0}
 };
 

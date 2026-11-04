@@ -20,7 +20,14 @@ The parts a write may change:
 - for a new sheet, its relationship and content-type entries;
 - an Excel table's definition (`xl/tables/tableN.xml`), only its `ref`
   and its autofilter's `ref`, and its column names when the header row
-  is written, when `write_sheet()` writes a table into it.
+  is written, when a write puts a table at its top-left cell or runs
+  past its last row; and then, in the charts that plot the table's
+  columns, the ranges of those series (the text of `<c:f>`), so the
+  charts follow the table as they would in Excel;
+- `xl/calcChain.xml`, removed with its relationship and content-type
+  entry when a write overwrites a formula, since Excel repairs a file
+  whose calculation chain lists a cell without one (`fullCalcOnLoad`
+  makes Excel build it again).
 
 Text is written as inline strings, so the shared string table is never
 rewritten. The worksheet splice is tested against Table Viewer's

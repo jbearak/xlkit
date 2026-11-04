@@ -483,6 +483,12 @@ write_plan <- function(plan, path, full, replace, call) {
     if (made$ints[[1]] == 0L) existing_file(path, full, call)
     return(invisible())
   }
+  move_over(tmp, full, path, call)
+}
+
+# Move the finished file `tmp` over `full`. On Windows a file Excel has
+# open cannot be replaced, and the error says so.
+move_over <- function(tmp, full, path, call) {
   why <- NULL
   ok <- withCallingHandlers(
     file.rename(tmp, full),

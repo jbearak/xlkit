@@ -16,6 +16,8 @@ rust_xlsxwriter = { version = "=0.102.0", default-features = false }
 # Both are calamine's own dependencies; xlkit reads table parts with them.
 quick-xml = "0.42"
 zip = { version = "9.3", default-features = false }
+# quick-xml's own dependency; the worksheet splice searches bytes with it.
+memchr = "2.8"
 
 [workspace]
 
