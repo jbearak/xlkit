@@ -9,21 +9,22 @@
 # - docs/r.md's reading sections ("Install" to "Read every sheet") in a
 #   temporary folder holding a copy of report.xlsx (for the "Did you
 #   mean report.xlsx?" example);
-# - its writing sections ("Write a table" to "Format the output", and
-#   "Variable labels and value labels") in a folder of their own. The
-#   docs write about the reader's own data and files, so that folder
-#   holds them: `summary`, `detail`, `notes`, `means`, `counts`, `q` and
-#   `q3` (made from sales.xlsx), results.xlsx (a copy of template.xlsx,
-#   with sheets Cover, Chart and Data), and survey.dta (written with
-#   dtaparser, whose `sex` has the unlabelled code 9 in rows 5, 12 and 30
-#   of the sheet and whose `agefb` is labelled "Age at first birth");
+# - its writing sections ("Write a table" to "Fill in an existing
+#   workbook", and "Variable labels and value labels") in a folder of
+#   their own. The docs write about the reader's own data and files, so
+#   that folder holds them: `summary`, `detail`, `notes`, `means`,
+#   `counts`, `q` and `q3` (made from sales.xlsx), `new_data` (twelve
+#   months of values, as many rows as the template's Data sheet) and
+#   `model_table` (a small table of estimates), results.xlsx (a copy of
+#   template.xlsx, with sheets Cover, Chart and Data), and survey.dta
+#   (written with dtaparser, whose `sex` has the unlabelled code 9 in
+#   rows 5, 12 and 30 of the sheet and whose `agefb` is labelled "Age at
+#   first birth");
 # - README.md's first example, in a folder holding sales.xlsx and
 #   template.xlsx, where `summary` is the Summary sheet.
 #
-# "Fill in an existing workbook" and lines calling write_sheet() or
-# write_cells() are left out until those functions exist. A block of
-# output with no code, such as a message shown on its own, is checked
-# against what the code block above it prints.
+# A block of output with no code, such as a message shown on its own, is
+# checked against what the code block above it prints.
 #
 # `library` is where xlkit (and dtaparser) are installed, if not on the
 # default path. Exits with status 1 when an output differs or an example
@@ -44,7 +45,6 @@ blocks_of <- function(lines, from, to, file) {
     body <- part[(s + 1):(e - 1)]
     is_out <- startsWith(body, "#>")
     code <- body[!is_out]
-    code <- code[!grepl("\\b(write_cells|write_sheet)\\(", code)]
     list(code = code, expected = sub("^#> ?", "", body[is_out]), where = sprintf("%s:%d", file, from + s - 1))
   })
   out <- Filter(function(b) !any(grepl("install.packages|remotes::", b$code)), out)
@@ -67,7 +67,7 @@ section <- function(title) {
 range_of <- function(first, last) c(section(first)$from, section(last)$to)
 
 reading <- range_of("Install", "Read every sheet")
-writing <- range_of("Write a table", "Format the output")
+writing <- range_of("Write a table", "Fill in an existing workbook")
 labels <- section("Variable labels and value labels")
 setup_block <- function(code) list(list(code = code, expected = character(), where = "tools/check-docs.R's setup", setup = TRUE))
 blocks <- c(
@@ -99,6 +99,8 @@ write_setup <- c(
   "  means <- aggregate(cbind(units, amount) ~ region, detail, mean)",
   "  counts <- as.data.frame(table(region = detail$region), responseName = 'n')",
   "  q <- detail[1:7, ]; q3 <- detail[8:14, ]",
+  "  new_data <- data.frame(month = month.abb, value = c(120, 135, 128, 140, 152, 149, 160, 171, 158, 166, 175, 190))",
+  "  model_table <- data.frame(term = c('(Intercept)', 'price'), estimate = c(12.4, -0.8), std_error = c(1.1, 0.2))",
   "  file.copy(xlkit::xlkit_example('template.xlsx'), 'results.xlsx')",
   "  .sex <- rep(c(1, 2), length.out = 40); .sex[c(4, 11, 29)] <- 9",
   "  dtaparser::save_dta(data.frame(",

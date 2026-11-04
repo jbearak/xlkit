@@ -10,3 +10,4 @@
 ^src/rust/target$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^tests/conformance$

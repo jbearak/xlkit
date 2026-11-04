@@ -712,9 +712,11 @@ it opens the file. Until then, `read_xlsx()` reads the old results.
 `.xls` or `.xlsb`), password-protected workbooks, and the rare
 worksheets whose XML xlkit cannot edit safely stop with an error that
 says why; nothing is written. Writing into a cell inside a merged range
-other than its top-left cell, or over part of an Excel table's header,
-stops too. Writing into an Excel table's body grows the table when the
-new rows extend it.
+other than its top-left cell, over part of an Excel table's header, or
+into an array formula's range stops too, as does `write_sheet()` without
+`at` on a sheet with an Excel table that does not start at `A1` (it
+would clear the table). Writing into an Excel table's body grows the
+table when the new rows extend it, unless the table has a totals row.
 
 ## Variable labels and value labels
 

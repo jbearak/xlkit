@@ -120,6 +120,8 @@ Copyright holders are given as they appear in each project's LICENSE file at the
 - License: GPL-3.0
 - URL: https://github.com/jbearak/table-viewer
 - Adapted: the number-format section splitter, `format_sections()` in `src/spreadsheet-format.ts` (how quotes, `\` escapes, the `_` and `*` padding characters and brackets hide a `;`), in `src/rust/src/format.rs`'s `first_section()`. xlkit's date, time and duration classifier around it is its own.
+- Adapted: the surgical worksheet edit, from `src/xlsx-cell-write.ts` (`apply_cell_edits()`, the namespace-aware structure scan and its refusal rules, `build_cell_xml()`, `apply_utf8_splices()`, `widen_dimension()`), `src/ooxml-worksheet-scan.ts` (the byte scanner: ignorable comment, CDATA and processing-instruction ranges, quote-aware tag ends, end tags with whitespace, rows and cells by local name, canonical cell references) and `src/ooxml-xml.ts` (attribute lexing, `remove_attr()`, entity decoding), in `src/rust/src/splice.rs`. Values arrive typed and styles are chosen by the caller; the rest follows Table Viewer.
+- Copied: the worksheet conformance corpus, `conformance/` at commit 2bd1726 (corpus revision 1.1.0), in `tests/conformance/`, run by `src/rust/src/conformance.rs`.
 
 ### Howard Hinnant's date algorithms
 
@@ -128,7 +130,7 @@ Copyright holders are given as they appear in each project's LICENSE file at the
 
 ## Dependencies
 
-calamine and rust_xlsxwriter are compiled into xlkit, with the crates they depend on, all pinned in `src/rust/Cargo.lock`: quick-xml, zip, flate2, zlib-rs, zopfli, encoding_rs, codepage, atoi_simd, fast-float2, serde, log, memchr, byteorder, crc32fast, simd-adler32, hashbrown, indexmap, bumpalo and typed-path. rust_xlsxwriter adds no crates of its own beyond zip, which it shares with calamine. Their licenses are MIT, Apache-2.0, Zlib, BSD-3-Clause (part of encoding_rs) or Unlicense, or a choice among them, all compatible with GPL-3.0.
+calamine and rust_xlsxwriter are compiled into xlkit, with the crates they depend on (xlkit also uses quick-xml, zip and memchr from among them directly), all pinned in `src/rust/Cargo.lock`: quick-xml, zip, flate2, zlib-rs, zopfli, encoding_rs, codepage, atoi_simd, fast-float2, serde, log, memchr, byteorder, crc32fast, simd-adler32, hashbrown, indexmap, bumpalo and typed-path. rust_xlsxwriter adds no crates of its own beyond zip, which it shares with calamine. Their licenses are MIT, Apache-2.0, Zlib, BSD-3-Clause (part of encoding_rs) or Unlicense, or a choice among them, all compatible with GPL-3.0.
 
 ### calamine
 

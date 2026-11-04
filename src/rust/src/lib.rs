@@ -8,9 +8,14 @@
 //! unwinds into C. To write, C hands Rust an `XlPlan` of pointers into
 //! R's vectors, which Rust only reads while `xl_write()` runs.
 
+#[cfg(test)]
+mod conformance;
+mod edit;
 mod format;
 mod package;
 mod read;
+mod splice;
+mod styles;
 mod write;
 
 use std::ffi::{c_char, CStr, CString};
@@ -333,6 +338,80 @@ pub unsafe extern "C" fn xl_write(path: *const c_char, plan: *const XlPlan) -> X
         };
         write::write(a[0], &plan)?;
         Ok(Out::default())
+    })
+}
+
+/// What `xl_edit()` writes; see `edit::EditPlan` for what each part means.
+#[repr(C)]
+pub struct XlEditPlan {
+    pub fmt_ints: XlInts,
+    pub fmt_size: XlDoubles,
+    pub fmt_font: XlStrings,
+    pub fmt_numfmt: XlStrings,
+    pub names: XlStrings,
+    pub ints: XlInts,
+    pub width_cols: XlInts,
+    pub width_vals: XlDoubles,
+    pub merges: XlInts,
+    pub blocks: XlInts,
+    pub kinds: XlInts,
+    pub fmts: XlInts,
+    pub dclass: XlInts,
+    pub nums: XlDoubles,
+    pub strs: XlStrings,
+    pub pieces: XlInts,
+}
+
+/// Write cells into the workbook `src`, giving the edited package `dst`
+/// (ADR 0006). strings are three per chart range that no longer matches
+/// the data written: the range, the cells written, and their rows.
+///
+/// # Safety
+/// `plan` must point to an `XlEditPlan` whose vectors stay valid,
+/// unchanged, while this runs.
+#[no_mangle]
+pub unsafe extern "C" fn xl_edit(
+    src: *const c_char,
+    dst: *const c_char,
+    plan: *const XlEditPlan,
+) -> XlResult {
+    if plan.is_null() {
+        return failed(9, "a NULL plan was passed to xlkit's Rust code");
+    }
+    let p = &*plan;
+    run::<edit::Failure, _>(&[src, dst], |a| {
+        let plan_failure = |e: write::Failure| edit::Failure::Plan(crate::Fail::message(&e));
+        let names = strings(&p.names).map_err(plan_failure)?;
+        let sheet = names
+            .first()
+            .copied()
+            .flatten()
+            .ok_or_else(|| edit::Failure::Plan("no sheet name".into()))?;
+        let plan = edit::EditPlan {
+            fmt_ints: slice(p.fmt_ints.ptr, p.fmt_ints.n),
+            fmt_size: slice(p.fmt_size.ptr, p.fmt_size.n),
+            fmt_font: strings(&p.fmt_font).map_err(plan_failure)?,
+            fmt_numfmt: strings(&p.fmt_numfmt).map_err(plan_failure)?,
+            sheet,
+            after: names.get(1).copied().flatten(),
+            ints: slice(p.ints.ptr, p.ints.n),
+            width_cols: slice(p.width_cols.ptr, p.width_cols.n),
+            width_vals: slice(p.width_vals.ptr, p.width_vals.n),
+            merges: slice(p.merges.ptr, p.merges.n),
+            blocks: slice(p.blocks.ptr, p.blocks.n),
+            kinds: slice(p.kinds.ptr, p.kinds.n),
+            fmts: slice(p.fmts.ptr, p.fmts.n),
+            dclass: slice(p.dclass.ptr, p.dclass.n),
+            nums: slice(p.nums.ptr, p.nums.n),
+            strs: strings(&p.strs).map_err(plan_failure)?,
+            pieces: slice(p.pieces.ptr, p.pieces.n),
+        };
+        let edited = edit::edit(a[0], a[1], &plan)?;
+        let mut out = Out::default();
+        for c in edited.charts {
+            out.strings.extend(c);
+        }
+        Ok(out)
     })
 }
 

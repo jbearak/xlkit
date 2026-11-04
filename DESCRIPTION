@@ -10,8 +10,11 @@ Description: Reads .xlsx workbooks into tibbles, naming sheets, ranges
     one sheet each or several tables on one sheet, with a bold header
     that stays in view, fitted column widths, number formats, styles and
     Stata's variable and value labels, and never replaces a file unless
-    told to. Reading is done in Rust by the calamine crate and writing by
-    the rust_xlsxwriter crate.
+    told to. Fills in existing workbooks in place, writing only the cells
+    it is given and copying every other part of the file byte for byte,
+    so templates keep their charts, comments and formats. Reading is done
+    in Rust by the calamine crate and writing new workbooks by the
+    rust_xlsxwriter crate.
 License: GPL-3
 URL: https://github.com/jbearak/xlkit
 BugReports: https://github.com/jbearak/xlkit/issues
