@@ -80,6 +80,43 @@ test_that("a long header is cut to 32 characters under \"stata\", still unique",
   expect_false(anyDuplicated(out$names) > 0)
 })
 
+test_that("\"stata\" names that its rule or 32-character cut makes repeat are in the message", {
+  df <- data.frame(1, 2, 3, 4, 5, 6)
+  names(df) <- c("Region", "Share %", "Share #", "Total", "Number of children ever born in the household, living",
+                 "Number of children ever born in the household, dead")
+  df$total <- 7
+  path <- temp_xlsx()
+  write_xlsx(df, path)
+  msg <- expect_message(out <- read_xlsx(path, names = "stata"), class = "rlang_message")
+  text <- conditionMessage(msg)
+  expect_identical(names(out)[c(3, 6, 7)], c("Share_C", "Number_of_children_ever_born_i_F", "total"))
+  expect_match(text, "C1 \"Share #\" is `Share_C` (it would repeat B1 after the rule)", fixed = TRUE)
+  expect_match(
+    text,
+    "F1 \"Number of children ever born in the household, dead\" is `Number_of_children_ever_born_i_F` (cut to 32 characters, it would repeat E1)",
+    fixed = TRUE
+  )
+  expect_no_match(text, "G1")
+  # With a case, "Total" and "total" become equal too.
+  msg <- expect_message(read_xlsx(path, names = c("stata", "lower")), class = "rlang_message")
+  expect_match(conditionMessage(msg), "G1 \"total\" is `total_g` (it would repeat D1 after the rule)", fixed = TRUE)
+})
+
+test_that("a repeat of a repaired name is not said to come from the 32-character cut", {
+  for (rule in list("snake", c("stata", "lower"))) {
+    out <- xlkit:::make_col_names(c("a b", "a_b", "a_b_b"), c("A", "B", "C"), rule)
+    expect_identical(out$repairs$why, c("rule", "rule"), label = paste(rule, collapse = "+"))
+  }
+})
+
+test_that("a function rule's names made unique after its repeats are in the message", {
+  out <- xlkit:::make_col_names(c("w", "x", "y", "z"), c("A", "B", "C", "D"),
+                                function(x) c("a", "a_C", "a", "a_C_C"))
+  expect_identical(out$names, c("a", "a_C", "a_C_C", "a_C_C_D"))
+  expect_identical(out$repairs$index, c(3L, 4L))
+  expect_identical(out$repairs$why, c("repeat", "rule"))
+})
+
 test_that("a name that differs from its header keeps the header as its label", {
   df <- suppressMessages(read_xlsx(messy(), sheet = "Headers", names = "snake"))
   expect_identical(attr(df$share_percent, "label"), "Share %")
@@ -97,4 +134,9 @@ test_that("a names function must return one name per header", {
     read_xlsx(xlkit_example("report.xlsx"), names = function(x) "a"),
     "must return a character vector as long as its input"
   )
+})
+
+test_that("a Stata name cut to 32 characters does not end in an underscore", {
+  expect_identical(xlkit:::stata_name("Children ever born to the woman, by age"), "Children_ever_born_to_the_woman")
+  expect_identical(nchar(xlkit:::stata_name(strrep("a", 40))), 32L)
 })

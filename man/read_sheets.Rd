@@ -11,7 +11,8 @@ read_sheets(path, sheets = NULL, ...)
 
 \item{sheets}{\code{NULL} for every worksheet; a vector of sheet names or
 positions; or one regular expression matched against the names, such
-as \code{"^Sales"}.}
+as \code{"^Sales"}. A name that is not a sheet, or an expression that
+matches none, is an error.}
 
 \item{...}{Arguments for \code{\link[=read_xlsx]{read_xlsx()}}, except \code{sheet}.}
 }

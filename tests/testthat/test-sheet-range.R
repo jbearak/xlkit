@@ -104,6 +104,22 @@ test_that("header rows must lie in the range", {
   expect_identical(nrow(t), 35L)
 })
 
+test_that("a header row below the data stops and names the last row with data", {
+  expect_error(
+    read_xlsx(sales(), sheet = "Sales 2024", header = 50),
+    "`header = 50`, but the last row with data in sheet \"Sales 2024\" is 40.", fixed = TRUE
+  )
+  expect_error(read_xlsx(sales(), sheet = "Sales 2024", header = 50), "Its data is in B1:F40.", fixed = TRUE)
+  expect_error(
+    read_xlsx(sales(), sheet = "Sales 2024", range = "B:F", header = 41:42),
+    "`header = 41:42`, but the last row with data in `range = \"B:F\"` is 40.", fixed = TRUE
+  )
+  # The last row with data is still a header, with no rows below it.
+  last <- read_xlsx(sales(), sheet = "Sales 2024", header = 40)
+  expect_identical(nrow(last), 0L)
+  expect_identical(ncol(last), 5L)
+})
+
 test_that("a title in row 1 is read as the header, with a warning that says what to do", {
   w <- expect_warning(t <- read_xlsx(sales(), sheet = "Sales 2024"), class = "rlang_warning")
   expect_identical(

@@ -161,7 +161,10 @@ resolve_rect <- function(g, r, header, sheet, call) {
   }
   if (is.null(r)) {
     b <- bounds_in(g, ra = top)
-    if (is.null(b)) return(NULL)
+    if (is.null(b)) {
+      if (!is.na(top)) past_data(header, bounds_in(g), paste0("sheet ", dquote(sheet)), call)
+      return(NULL)
+    }
     if (!is.na(top)) b[[1]] <- top
     return(b)
   }
@@ -182,6 +185,9 @@ resolve_rect <- function(g, r, header, sheet, call) {
     },
     columns = {
       b <- bounds_in(g, ra = top, ca = r$c1, cb = r$c2)
+      if (is.null(b) && !is.na(top)) {
+        past_data(header, bounds_in(g, ca = r$c1, cb = r$c2), paste0("`range = ", dquote(r$text), "`"), call)
+      }
       if (is.null(b)) outside()
       c(if (is.na(top)) b[[1]] else top, r$c1, b[[3]], r$c2)
     },
@@ -201,6 +207,16 @@ resolve_rect <- function(g, r, header, sheet, call) {
     rect[[1]] <- top
   }
   rect
+}
+
+# The error for header rows below the last row with data in `where`,
+# whose data is in `b` (nothing happens when `where` holds no data).
+past_data <- function(header, b, where, call) {
+  if (is.null(b)) return(invisible())
+  rlang::abort(c(
+    paste0("`header = ", deparse_rows(header), "`, but the last row with data in ", where, " is ", b[[3]], "."),
+    i = paste0("Its data is in ", range_text(b[[1]], b[[2]], b[[3]], b[[4]]), ".")
+  ), call = call)
 }
 
 deparse_rows <- function(x) if (length(x) == 1) as.character(x) else paste0(min(x), ":", max(x))

@@ -1,6 +1,7 @@
 # Column names from header text (docs/r.md, "Header rows and column
 # names"). Every rule gives unique names. Blank and repeated headers are
-# repaired with the column letter, and only those repairs get a message.
+# repaired with the column letter, as are names a rule (or Stata's
+# 32-character cut) makes equal, and those repairs get a message.
 
 name_rules <- c("unique", "snake", "stata")
 name_cases <- c("lower", "upper")
@@ -22,8 +23,8 @@ check_names_arg <- function(names, call) {
 # Names for columns with header `text` (NA or "" for blank) and Excel
 # column letters `letters`. Returns list(names, repairs), where repairs
 # is a data frame of the columns renamed because their header was blank
-# or repeated: index, why ("blank" or "repeat"), and the earlier column
-# it repeats.
+# or repeated, or the rule made it repeat an earlier name: index, why
+# ("blank", "repeat", "rule" or "cut"), and the earlier column it repeats.
 make_col_names <- function(text, letters, rule) {
   text[is.na(text)] <- ""
   if (is.function(rule)) {
@@ -36,7 +37,7 @@ make_col_names <- function(text, letters, rule) {
     }
     out[is.na(out)] <- ""
     u <- uniquify(out, letters)
-    return(list(names = finish_unique(u$names, letters, identity), repairs = u$repairs))
+    return(merge_repairs(u, finish_unique(u$names, letters, identity)))
   }
   u <- uniquify(text, letters)
   case <- function(x) {
@@ -54,7 +55,18 @@ make_col_names <- function(text, letters, rule) {
   empty <- !nzchar(out)
   out[empty] <- convert(letters[empty])
   limit <- if ("stata" %in% rule) 32 else Inf
-  list(names = finish_unique(out, letters, convert, base = u$names, limit = limit), repairs = u$repairs)
+  # The names before Stata's cut, to tell a repeat the cut made.
+  uncut <- if ("stata" %in% rule) stata_name(case(u$names), cut = FALSE) else out
+  uncut[empty] <- out[empty]
+  merge_repairs(u, finish_unique(out, letters, convert, base = u$names, limit = limit, uncut = uncut))
+}
+
+# The final names, with uniquify()'s repairs and those finish_unique()
+# made to columns uniquify() left alone.
+merge_repairs <- function(u, f) {
+  more <- f$repairs[!f$repairs$index %in% u$repairs$index, , drop = FALSE]
+  repairs <- rbind(u$repairs, more)
+  list(names = f$names, repairs = repairs[order(repairs$index), , drop = FALSE])
 }
 
 # Blank headers become their column letter; a header that repeats an
@@ -78,12 +90,25 @@ uniquify <- function(text, letters) {
   list(names = out, repairs = data.frame(index = repaired, why = why[repaired], of = of[repaired]))
 }
 
-# Make names unique that a rule made equal, without a message: the
-# later one gets "_" and its letter, then a number if that is not enough.
-# Under a length limit (Stata's 32), the stem is cut to keep the suffix.
-finish_unique <- function(out, letters, convert, base = out, limit = Inf) {
+# Make names unique that a rule made equal: the later one gets "_" and
+# its letter, then a number if that is not enough. Under a length limit
+# (Stata's 32), the stem is cut to keep the suffix. Returns list(names,
+# repairs), with why "cut" when the cut itself made the names equal: they
+# were equal as the rule gave them and differed before the cut.
+finish_unique <- function(out, letters, convert, base = out, limit = Inf, uncut = out) {
+  given <- out
+  index <- integer()
+  why <- character()
+  of <- integer()
   for (i in seq_along(out)) {
     k <- 1
+    earlier <- match(out[i], out[seq_len(i - 1)])
+    if (!is.na(earlier)) {
+      index <- c(index, i)
+      cut <- given[i] == given[earlier] && uncut[i] != uncut[earlier]
+      why <- c(why, if (cut) "cut" else "rule")
+      of <- c(of, earlier)
+    }
     while (out[i] %in% out[seq_len(i - 1)]) {
       suffix <- convert(paste0("x_", letters[i], if (k > 1) paste0("_", k)))
       suffix <- substr(suffix, 2, nchar(suffix))
@@ -93,7 +118,7 @@ finish_unique <- function(out, letters, convert, base = out, limit = Inf) {
       k <- k + 1
     }
   }
-  out
+  list(names = out, repairs = data.frame(index = index, why = why, of = of))
 }
 
 snake_name <- function(x) {
@@ -111,14 +136,18 @@ stata_reserved <- c(
 )
 
 # Valid Stata names: letters, digits and underscores, at most 32
-# characters, not starting with a digit, and not a reserved word.
-stata_name <- function(x) {
+# characters (unless `cut = FALSE`), not starting with a digit, and not a
+# reserved word.
+stata_name <- function(x, cut = TRUE) {
   x <- iconv(x, "UTF-8", "ASCII", sub = "_")
   x[is.na(x)] <- ""
   x <- gsub("[^A-Za-z0-9_]+", "_", x)
   x <- gsub("^_+|_+$", "", x)
   x <- ifelse(grepl("^[0-9]", x) | x %in% stata_reserved, paste0("_", x), x)
-  substr(x, 1, 32)
+  if (!cut) return(x)
+  # The cut can end on a run of other characters; drop its "_" there too.
+  out <- sub("_+$", "", substr(x, 1, 32))
+  ifelse(nzchar(out), out, substr(x, 1, 32))
 }
 
 # The message for repairs, naming the header cells and the new names.
@@ -129,8 +158,14 @@ names_message <- function(repairs, names, text, header_cells, title = "New names
     lines[[k]] <- if (repairs$why[[k]] == "blank") {
       paste0(header_cells[[i]], " (blank) is `", names[[i]], "`")
     } else {
-      paste0(header_cells[[i]], " ", dquote(text[[i]]), " is `", names[[i]], "` (it repeats ",
-             header_cells[[repairs$of[[k]]]], ")")
+      of <- header_cells[[repairs$of[[k]]]]
+      why <- switch(repairs$why[[k]],
+        "repeat" = paste0("it repeats ", of),
+        "rule" = paste0("it would repeat ", of, " after the rule"),
+        "cut" = paste0("cut to 32 characters, it would repeat ", of)
+      )
+      shown <- if (nzchar(text[[i]])) paste0(" ", dquote(text[[i]])) else " (blank)"
+      paste0(header_cells[[i]], shown, " is `", names[[i]], "` (", why, ")")
     }
   }
   rlang::inform(c(

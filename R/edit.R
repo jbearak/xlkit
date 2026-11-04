@@ -217,6 +217,7 @@ add_vector <- function(p, x, row, col, values, na, overlay, keep_dates, what, ca
   id <- format_id(p$reg, style)
   dc <- if (keep_dates) date_class(x) else 0L
   add_cells(p, row, col, cells$kind, cells$num, cells$str, rep(id, length(x)), rep(dc, length(x)))
+  p$blocks[[length(p$blocks)]]$plain <- is.numeric(x) && !is_labelled(x)
   cells
 }
 
@@ -259,6 +260,7 @@ add_table <- function(p, df, row, col, header, values, na, formats, styles, head
     if (isTRUE(header_style$bold)) hw <- hw * 1.1
     shown <- if (!is.null(styles$columns[[name]]$format)) styles$columns[[name]]$format else
       if (!is.null(numfmt)) numfmt else cells$format
+    p$blocks[[length(p$blocks)]]$column <- name
     widths[[j]] <- max(hw, cells_width(cells, shown))
   }
   p$pieces <- c(p$pieces, row - 1L, col - 1L, n_header + nrow(df), length(df), n_header)

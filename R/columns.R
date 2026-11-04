@@ -243,3 +243,87 @@ first_format_section <- function(format) {
   }
   format
 }
+
+# A number format with an unquoted "%", which shows a number times 100.
+is_percent_format <- function(format) {
+  rlang::is_string(format) && grepl("%", gsub('"[^"]*"|\\\\.|\\[[^]]*\\]|_.|\\*.', "", format), fixed = TRUE)
+}
+
+# The message for numbers that look already multiplied by 100 (every
+# finite one at least 1 in absolute value) given a percent format, or
+# NULL. `what` names the column or cells, `verb` agrees with it.
+percent_message <- function(what, v, format, verb = "has") {
+  v <- v[is.finite(v)]
+  if (!is_percent_format(format) || !length(v) || any(abs(v) < 1)) return(NULL)
+  shown <- format(v[[1]], digits = 15, trim = TRUE)
+  code <- gsub('"[^"]*"|\\\\.|\\[[^]]*\\]|_.|\\*.', "", first_format_section(format))
+  parts <- strsplit(code, ".", fixed = TRUE)[[1]]
+  decimals <- if (length(parts) > 1) nchar(gsub("[^0#?]", "", parts[[2]])) else 0
+  comma <- grepl("[0#?],[0#?]", code)
+  as_pct <- paste0(trimws(formatC(v[[1]] * 100, format = "f", digits = decimals,
+                                  big.mark = if (comma) "," else "")), "%")
+  one <- length(v) == 1
+  c(
+    paste0(what, " ", verb, if (one) " the value " else " values such as ", shown, " and the format ",
+           dquote(format), ", which shows ", if (one) "it" else "them", " as ", as_pct, "."),
+    i = paste0("A percent format multiplies by 100. To show ", shown, "%, divide by 100 first.")
+  )
+}
+
+# Percent messages for the number cells of `blocks` (columns of cells:
+# row, col, kind, num, fmt, and `plain` for numbers that are not dates,
+# times or codes), judged by the number format each cell ends up with,
+# `format_of(fmt)`, one column of cells at a time. A column of a table
+# (`column`) whose number cells all have one percent format is named;
+# other cells are named by reference.
+# `first` is the row and column offset of the blocks (1 when counted
+# from 0). A cell with no format of its own keeps whatever it had, which
+# is not judged.
+percent_messages <- function(blocks, format_of, first = 0, label = identity) {
+  groups <- list()
+  for (b in seq_along(blocks)) {
+    blk <- blocks[[b]]
+    if (!isTRUE(blk$plain)) next
+    num <- which(blk$kind == W_NUMBER)
+    fmts <- vapply(blk$fmt[num], function(id) {
+      f <- format_of(id)
+      if (is_percent_format(f)) f else NA_character_
+    }, character(1))
+    for (f in unique(fmts[!is.na(fmts)])) {
+      hit <- num[!is.na(fmts) & fmts == f]
+      whole <- !is.null(blk$column) && length(hit) == length(num)
+      # Each column of cells is judged on its own, so fractions in one
+      # column do not hide numbers written as percents in another; the
+      # columns judged alike are then named in one message.
+      key <- if (whole) paste0("column:", length(groups)) else paste0("cells:", b, ":", f)
+      g <- groups[[key]]
+      if (is.null(g)) g <- list(format = f, column = if (whole) blk$column, rows = numeric(), cols = numeric(), v = numeric())
+      g$rows <- c(g$rows, blk$row + hit - 1 + first)
+      g$cols <- c(g$cols, rep(blk$col + first, length(hit)))
+      g$v <- c(g$v, blk$num[hit])
+      groups[[key]] <- g
+    }
+  }
+  judged <- list()
+  for (key in names(groups)) {
+    g <- groups[[key]]
+    if (is.null(percent_message("", g$v, g$format))) next
+    if (!is.null(g$column)) {
+      judged[[key]] <- g
+      next
+    }
+    merged <- paste0("cells:", g$format)
+    h <- judged[[merged]]
+    if (!is.null(h)) g[c("rows", "cols", "v")] <- Map(c, h[c("rows", "cols", "v")], g[c("rows", "cols", "v")])
+    judged[[merged]] <- g
+  }
+  out <- list()
+  for (g in judged) {
+    o <- order(g$rows, g$cols)
+    what <- if (!is.null(g$column)) paste0("`", g$column, "`") else and_list_first(cell_ref(g$rows[o], g$cols[o]))
+    verb <- if (is.null(g$column) && length(o) > 1) "have" else "has"
+    m <- percent_message(label(what), g$v[o], g$format, verb = verb)
+    if (!is.null(m)) out[[length(out) + 1]] <- m
+  }
+  out
+}

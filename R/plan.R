@@ -46,9 +46,9 @@ plan_workbook <- function(sheets, args, formats, widths, styles, merges, call) {
   n_header <- switch(if (isFALSE(args$header)) "none" else args$header, none = 0L, names = 1L, labels = 1L, both = 2L)
 
   blocks <- list()
-  add_block <- function(sheet, row, col, kind, num, str, fmt) {
+  add_block <- function(sheet, row, col, kind, num, str, fmt, plain = FALSE, column = NULL) {
     blocks[[length(blocks) + 1]] <<- list(sheet = sheet, row = row, col = col, kind = kind, num = num,
-                                          str = str, fmt = fmt)
+                                          str = str, fmt = fmt, plain = plain, column = column)
   }
   sheet_ints <- integer()
   width_cols <- integer()
@@ -158,7 +158,8 @@ plan_workbook <- function(sheets, args, formats, widths, styles, merges, call) {
                   c(h_kind, cells$kind),
                   c(rep(NA_real_, length(header_text)), cells$num),
                   c(header_text, cells$str),
-                  c(rep(header_id, length(header_text)), rep(body_id, length(x))))
+                  c(rep(header_id, length(header_text)), rep(body_id, length(x))),
+                  plain = is.numeric(x) && !is_labelled(x), column = name)
         hw <- if (length(header_text)) max(nchar(header_text, type = "width"), 0, na.rm = TRUE) else 0
         if (!is.null(args$header_style$bold) && isTRUE(args$header_style$bold)) hw <- hw * 1.1
         if (isTRUE(args$filter)) hw <- hw + 2
@@ -179,6 +180,9 @@ plan_workbook <- function(sheets, args, formats, widths, styles, merges, call) {
     for (rs in c(styles$ranges, Filter(function(m) !is.null(m$style), merges))) {
       sheet_blocks <- apply_range_style(sheet_blocks, rs$cells, rs$style, reg, s - 1L, add_block)
     }
+
+    messages <- c(messages, percent_messages(blocks[sheet_blocks], function(id) format_style(reg, id)$format,
+                                             first = 1, label = label))
 
     # Merged ranges: Excel keeps only the top-left value.
     for (m in merges) {

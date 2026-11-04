@@ -66,7 +66,7 @@ jobs:
 
   # The examples in docs/r.md and README.md, run against the installed
   # package; their output must match the docs. The labels examples read
-  # and write .dta files with dtaparser, which is on no registry.
+  # and write .dta files with dtaparser, which is not on CRAN.
   docs:
     runs-on: ubuntu-latest
     env:

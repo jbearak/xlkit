@@ -42,12 +42,18 @@
 #' @param header `TRUE` for the first row of the range or of the sheet's
 #'   data; `FALSE` for none (columns are named by their letters); a row
 #'   number as Excel shows it, such as `5`; or consecutive rows, such as
-#'   `4:5`, whose text is joined with a space.
+#'   `4:5`, whose text is joined with a space. A header row below the last
+#'   row with data is an error; the last row with data is a header with no
+#'   rows below it.
 #' @param names How header text becomes column names: `"unique"` (a
 #'   blank header is named by its column letter and a repeat gets `_` and
 #'   its letter), `"snake"`, `"stata"`, `"lower"`, `"upper"`, a rule and
 #'   a case such as `c("stata", "lower")`, or a function of a character
-#'   vector. Every choice gives unique names.
+#'   vector. Every choice gives unique names. `"snake"` cleans names but
+#'   does not shorten them; only `"stata"` cuts them, at 32 characters.
+#'   When a rule (or that cut) makes two names equal, the later one gets
+#'   `_` and its column letter, and a message says so, as for blank and
+#'   repeated headers.
 #' @param types `NULL` to guess every column; one type for every column;
 #'   one per column in order; or types named by column, such as
 #'   `c(zip = "text")`, with the rest guessed.
@@ -56,7 +62,10 @@
 #' @param dates `FALSE` reads date-formatted numbers as numbers.
 #' @return A tibble. Columns whose name differs from their header text
 #'   have a `label` attribute holding the text. Cells that did not convert
-#'   and Excel errors are listed by [xlsx_problems()].
+#'   and Excel errors are kept in the tibble's `xlkit_problems` attribute,
+#'   which [xlsx_problems()] reads. Operations that drop attributes, such
+#'   as some dplyr verbs, drop it too, so call [xlsx_problems()] on the
+#'   tibble `read_xlsx()` returned.
 #' @seealso [read_sheets()] to read several sheets, [xlsx_sheets()] to
 #'   list them.
 #' @export

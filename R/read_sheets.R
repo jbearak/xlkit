@@ -11,7 +11,8 @@
 #' @param path An `.xlsx` or `.xlsm` file.
 #' @param sheets `NULL` for every worksheet; a vector of sheet names or
 #'   positions; or one regular expression matched against the names, such
-#'   as `"^Sales"`.
+#'   as `"^Sales"`. A name that is not a sheet, or an expression that
+#'   matches none, is an error.
 #' @param ... Arguments for [read_xlsx()], except `sheet`.
 #' @return A list of tibbles named by sheet, in tab order.
 #' @export

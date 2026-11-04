@@ -20,6 +20,12 @@ because they did not fit their column's type, and the cells that held
 Excel errors such as \verb{#N/A}. \code{cell} and \code{row} are as Excel shows them,
 so you can find each cell in the workbook.
 }
+\details{
+\code{\link[=read_xlsx]{read_xlsx()}} keeps the problems in the tibble's \code{xlkit_problems}
+attribute, which \code{xlsx_problems()} reads. Operations that drop
+attributes, such as some dplyr verbs, drop it too, so call
+\code{xlsx_problems()} on the tibble \code{\link[=read_xlsx]{read_xlsx()}} returned.
+}
 \examples{
 path <- xlkit_example("messy.xlsx")
 df <- read_xlsx(path, sheet = "Missing", na = c("NA", ".", "-"))

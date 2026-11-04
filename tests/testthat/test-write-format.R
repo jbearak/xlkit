@@ -32,6 +32,63 @@ test_that("formats replace a date column's default format", {
   expect_identical(xl_cell(openpyxl(path), "A2")$format, "d mmm yyyy")
 })
 
+test_that("a percent format on numbers that look already multiplied by 100 gets a message", {
+  path <- temp_xlsx()
+  scaled <- data.frame(share = c(25.6, 40, -3), small = c(0.256, 25, 3))
+  msg <- expect_message(
+    write_xlsx(scaled, path, formats = c(share = "0.0%", small = "0%")),
+    class = "rlang_message"
+  )
+  expect_identical(
+    first_line(msg),
+    "`share` has values such as 25.6 and the format \"0.0%\", which shows them as 2560.0%."
+  )
+  expect_match(conditionMessage(msg), "A percent format multiplies by 100. To show 25.6%, divide by 100 first.",
+               fixed = TRUE)
+  # Not for a fraction anywhere in the column, nor a quoted "%".
+  expect_no_message(write_xlsx(scaled, path, formats = c(small = "0%"), replace = TRUE))
+  expect_no_message(write_xlsx(scaled, path, formats = c(share = '0.0"%"'), replace = TRUE))
+  expect_message(write_sheet(scaled, path, sheet = "Sheet1", formats = c(share = "0%")),
+                 "`share` has values such as 25.6 and the format \"0%\", which shows them as 2560%.", fixed = TRUE)
+  expect_message(write_sheet(scaled, path, sheet = "Sheet1", at = "E1", styles = list(share = xl_style(format = "0%"))),
+                 "`share` has values such as 25.6", fixed = TRUE)
+  msg <- expect_message(
+    write_cells(path, sheet = "Sheet1", J2 = c(12.5, 30), styles = list("J2:J3" = xl_style(format = "0.0%"))),
+    class = "rlang_message"
+  )
+  expect_match(conditionMessage(msg), "J2 and J3 have values such as 12.5 and the format \"0.0%\", which shows them as 1250.0%.",
+               fixed = TRUE)
+  expect_no_message(write_cells(path, sheet = "Sheet1", J2 = 0.125, styles = list(J2 = xl_style(format = "0.0%"))))
+})
+
+test_that("a percent format given by range gets the message in write_xlsx() and write_sheet()", {
+  path <- temp_xlsx()
+  scaled <- data.frame(share = c(25, 40))
+  by_range <- list("A2:A3" = xl_style(format = "0%"))
+  expect_message(write_xlsx(scaled, path, styles = by_range),
+                 "`share` has values such as 25 and the format \"0%\", which shows them as 2500%.", fixed = TRUE)
+  expect_message(write_sheet(scaled, path, sheet = "Sheet1", styles = by_range),
+                 "`share` has values such as 25", fixed = TRUE)
+  expect_message(write_xlsx(data.frame(share = c(25, 40, 50)), path, styles = by_range, replace = TRUE),
+                 "A2 and A3 have values such as 25", fixed = TRUE)
+})
+
+test_that("the percent message judges each cell's final format, so a later format without % clears it", {
+  path <- temp_xlsx()
+  scaled <- data.frame(share = c(25, 40))
+  expect_no_message(write_xlsx(scaled, path, formats = c(share = "0%"),
+                               styles = list("A2:A3" = xl_style(format = "0"))))
+  overlap <- list("C2:C3" = xl_style(format = "0%"), "C1:C3" = xl_style(format = "0"))
+  expect_no_message(write_cells(path, sheet = "Sheet1", C2 = c(25, 40), styles = overlap))
+  expect_no_message(write_sheet(scaled, path, sheet = "Sheet1", at = "C1", styles = overlap))
+})
+
+test_that("a % after _ or * (space or fill) is not a percent format", {
+  path <- temp_xlsx()
+  expect_no_message(write_xlsx(data.frame(share = c(25, 40)), path, formats = c(share = "0_%")))
+  expect_no_message(write_xlsx(data.frame(share = c(25, 40)), path, formats = c(share = "0*%"), replace = TRUE))
+})
+
 test_that("a name that is not a column stops, suggesting one that is", {
   path <- temp_xlsx()
   s <- sales()
@@ -232,4 +289,21 @@ test_that("xl_style() keeps only what is set, and prints it", {
   expect_identical(format(xl_style(border = "thin")), "<xl_style> border thin")
   expect_identical(format(xl_style()), "<xl_style> (keeps the cell's style)")
   expect_output(print(s), "<xl_style> bold", fixed = TRUE)
+})
+
+test_that("fractions in one column do not hide a percent mistake in another", {
+  path <- temp_copy(xlkit_example("template.xlsx"))
+  expect_message(
+    write_cells(path, "Cover", H1 = c(25, 40), I1 = c(0.25, 0.4),
+                styles = list("H1:H2" = xl_style(format = "0%"), "I1:I2" = xl_style(format = "0%"))),
+    "H1 and H2 have values such as 25"
+  )
+})
+
+test_that("columns of cells with the same percent mistake share one message", {
+  path <- temp_copy(xlkit_example("template.xlsx"))
+  expect_snapshot(
+    write_cells(path, "Cover", H1 = matrix(c(25, 40, 30, 50), 2), J1 = c(0.25, 0.4),
+                styles = list("H1:J2" = xl_style(format = "0%")))
+  )
 })

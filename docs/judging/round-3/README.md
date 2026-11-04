@@ -66,4 +66,8 @@ Changed after the check, before this PR:
   in `read_sheets()` (naming one is an error, not a way to read it) and
   "you can always see where a name came from" (not for blank headers).
 
-The agent's other notes are listed in its report as follow-ups.
+The agent's other notes landed after the release round, in a follow-up
+PR: messages for a `header` below the data, for `"stata"` names its rule
+or 32-character cut makes equal, and for percent formats on numbers that
+look already multiplied by 100, and the doc gaps its summary table
+lists.

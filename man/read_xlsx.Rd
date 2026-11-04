@@ -27,13 +27,19 @@ an Excel table or defined name.}
 \item{header}{\code{TRUE} for the first row of the range or of the sheet's
 data; \code{FALSE} for none (columns are named by their letters); a row
 number as Excel shows it, such as \code{5}; or consecutive rows, such as
-\code{4:5}, whose text is joined with a space.}
+\code{4:5}, whose text is joined with a space. A header row below the last
+row with data is an error; the last row with data is a header with no
+rows below it.}
 
 \item{names}{How header text becomes column names: \code{"unique"} (a
 blank header is named by its column letter and a repeat gets \verb{_} and
 its letter), \code{"snake"}, \code{"stata"}, \code{"lower"}, \code{"upper"}, a rule and
 a case such as \code{c("stata", "lower")}, or a function of a character
-vector. Every choice gives unique names.}
+vector. Every choice gives unique names. \code{"snake"} cleans names but
+does not shorten them; only \code{"stata"} cuts them, at 32 characters.
+When a rule (or that cut) makes two names equal, the later one gets
+\verb{_} and its column letter, and a message says so, as for blank and
+repeated headers.}
 
 \item{types}{\code{NULL} to guess every column; one type for every column;
 one per column in order; or types named by column, such as
@@ -47,7 +53,10 @@ trimming spaces, and only text cells.}
 \value{
 A tibble. Columns whose name differs from their header text
 have a \code{label} attribute holding the text. Cells that did not convert
-and Excel errors are listed by \code{\link[=xlsx_problems]{xlsx_problems()}}.
+and Excel errors are kept in the tibble's \code{xlkit_problems} attribute,
+which \code{\link[=xlsx_problems]{xlsx_problems()}} reads. Operations that drop attributes, such
+as some dplyr verbs, drop it too, so call \code{\link[=xlsx_problems]{xlsx_problems()}} on the
+tibble \code{read_xlsx()} returned.
 }
 \description{
 Reads one sheet into a tibble. Cells are named as Excel shows them: a
