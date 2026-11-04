@@ -18,16 +18,19 @@ test_that("dates follow the workbook's 1904 date system in every edit mode", {
 
 test_that("a cell with no style of its own keeps its column's and row's format when restyled", {
   skip_if_no_openpyxl()
-  path <- temp_copy(fixture("inherited.xlsx"))
-  write_cells(path, "Sheet1", A1 = as.Date("2024-01-01"), B3 = 8, styles = list(B3 = xl_style(underline = TRUE)))
-  seen <- openpyxl(path)
-  a1 <- xl_cell(seen, "A1", "Sheet1")
-  expect_identical(a1$format, "yyyy-mm-dd")
-  expect_true(a1$italic)
-  expect_identical(a1$fill, "FFFF00")
-  b3 <- xl_cell(seen, "B3", "Sheet1")
-  expect_true(b3$bold)
-  expect_identical(b3$underline, "'single'")
+  # The row's customFormat is "1" in one fixture and "true" in the other.
+  for (file in c("inherited.xlsx", "inherited-true.xlsx")) {
+    path <- temp_copy(fixture(file))
+    write_cells(path, "Sheet1", A1 = as.Date("2024-01-01"), B3 = 8, styles = list(B3 = xl_style(underline = TRUE)))
+    seen <- openpyxl(path)
+    a1 <- xl_cell(seen, "A1", "Sheet1")
+    expect_identical(a1$format, "yyyy-mm-dd")
+    expect_true(a1$italic)
+    expect_identical(a1$fill, "FFFF00")
+    b3 <- xl_cell(seen, "B3", "Sheet1")
+    expect_true(b3$bold)
+    expect_identical(b3$underline, "'single'")
+  }
 })
 
 test_that("a style alone does not let a merge hide a cell's value", {

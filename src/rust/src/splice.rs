@@ -1505,7 +1505,9 @@ pub fn apply_edits(
         let owner = *spans.last().unwrap_or(&spans[0]);
         let owner_tag = open_tag(xml, &owner);
         let ob = owner_tag.as_bytes();
-        let row_style = (get_attr(ob, 0, ob.len(), "customFormat").as_deref() == Some("1"))
+        // An XML boolean: "1" or "true".
+        let custom = get_attr(ob, 0, ob.len(), "customFormat");
+        let row_style = matches!(custom.as_deref().map(str::trim), Some("1") | Some("true"))
             .then(|| get_attr(ob, 0, ob.len(), "s").and_then(|s| s.trim().parse::<u32>().ok()))
             .flatten();
         for &i in idx {

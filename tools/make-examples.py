@@ -599,7 +599,20 @@ def inherited():
     ws["A1"] = 5
     ws.row_dimensions[3].font = Font(bold=True)
     ws["B3"] = 7
-    save(wb, os.path.join(FIXTURES, "inherited.xlsx"))
+    path = os.path.join(FIXTURES, "inherited.xlsx")
+    save(wb, path)
+    # The same workbook with the row's flag spelled "true", which the
+    # schema allows as well as "1".
+    src = zipfile.ZipFile(path)
+    out_path = os.path.join(FIXTURES, "inherited-true.xlsx")
+    with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as out:
+        for info in src.infolist():
+            data = src.read(info.filename)
+            if info.filename == "xl/worksheets/sheet1.xml":
+                assert b'customFormat="1"' in data
+                data = data.replace(b'customFormat="1"', b'customFormat="true"')
+            out.writestr(info, data)
+    print("wrote", os.path.relpath(out_path, ROOT))
 
 
 def main():
