@@ -1,0 +1,27 @@
+Package: xlkit
+Title: Read and Write Excel Workbooks, Naming Cells as Excel Shows Them
+Version: 0.1.0.9000
+Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"), email = "jbearak@guttmacher.org")
+Description: Reads .xlsx workbooks into tibbles, naming sheets, ranges
+    and header rows as Excel shows them. Each column's type comes from
+    every cell in it; cells that do not fit and Excel errors are reported
+    with their cell references. Dates follow each cell's number format
+    and the workbook's date system. Reading is done in Rust by the
+    calamine crate.
+License: GPL-3
+URL: https://github.com/jbearak/xlkit
+BugReports: https://github.com/jbearak/xlkit/issues
+Depends: R (>= 4.2)
+Imports:
+    hms,
+    rlang,
+    tibble,
+    vctrs
+Suggests:
+    readxl,
+    testthat (>= 3.0.0)
+SystemRequirements: Cargo (Rust's package manager), rustc
+Encoding: UTF-8
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.1

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Stop early, with what to do, when Rust's cargo cannot be found.
+if command -v cargo >/dev/null 2>&1 || [ -x "$USERPROFILE/.cargo/bin/cargo.exe" ]; then
+  exit 0
+fi
+echo "xlkit: building needs cargo; see https://rustup.rs" >&2
+exit 1

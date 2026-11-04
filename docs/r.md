@@ -72,7 +72,8 @@ it lists them:
 
 ```r
 xlkit_example()
-#> [1] "dates.xlsx"     "dates1904.xlsx" "messy.xlsx"     "report.xlsx"    "sales.xlsx"     "template.xlsx"
+#> [1] "dates.xlsx"     "dates1904.xlsx" "messy.xlsx"     "report.xlsx"
+#> [5] "sales.xlsx"     "template.xlsx"
 ```
 
 | workbook | what it holds |
@@ -199,10 +200,9 @@ If you read such a sheet without either, xlkit takes the title in row 1
 as the header and warns:
 
 ```r
-read_xlsx(path, sheet = "Sales 2024")
+df <- read_xlsx(path, sheet = "Sales 2024")
 #> Warning message:
-#> Row 1 has text only in B1 ("Sales by region, 2024"), but the rows below
-#> have up to 5 columns.
+#> Row 1 has text only in B1 ("Sales by region, 2024"), but the rows below have up to 5 columns.
 #> ℹ If the header is lower down, give its row: `header = 5`, or the range: `range = "B5:F40"`.
 ```
 
@@ -264,8 +264,13 @@ column's variable label, so you can always see where a name came from:
 
 ```r
 df <- read_xlsx(path, sheet = "Headers", names = "snake")
+#> New names:
+#> • C1 "Total" is `total_c` (it repeats B1)
+#> • D1 (blank) is `d`
+#> ℹ Choose another rule with `names =`, or set your own with `names(df) <- ...`.
 names(df)
-#> [1] "region"        "total"         "total_c"       "d"             "share_percent"
+#> [1] "region"        "total"         "total_c"       "d"
+#> [5] "share_percent"
 attr(df$share_percent, "label")
 #> [1] "Share %"
 ```
@@ -340,10 +345,10 @@ Excel error:
 ```r
 xlsx_problems(df)
 #> # A tibble: 2 × 5
-#>   cell  column  row value problem
-#>   <chr> <chr> <int> <chr> <chr>
-#> 1 C2003 amount 2003 n/a   not a number
-#> 2 C2004 amount 2004 12,5  not a number
+#>   cell  column   row value problem
+#>   <chr> <chr>  <int> <chr> <chr>
+#> 1 C2003 amount  2003 n/a   not a number
+#> 2 C2004 amount  2004 12,5  not a number
 ```
 
 `cell` and `row` are as Excel shows them, so you can find the cell in
@@ -362,9 +367,9 @@ read_xlsx(path)
 #> # A tibble: 3 × 3
 #>   day        stamp               clock
 #>   <date>     <dttm>              <time>
-#> 1 2024-01-15 2024-01-15 08:30:00 08:30
-#> 2 2024-02-29 2024-02-29 17:05:30 17:05
-#> 3 2024-12-31 2024-12-31 23:59:59 23:59
+#> 1 2024-01-15 2024-01-15 08:30:00 08:30:00
+#> 2 2024-02-29 2024-02-29 17:05:30 17:05:30
+#> 3 2024-12-31 2024-12-31 23:59:59 23:59:59
 ```
 
 - **Date-times are UTC.** Excel stores the time on the clock, without a
@@ -435,9 +440,22 @@ reads as `"#N/A"`, without a warning.
 
 ```r
 all <- read_sheets(xlkit_example("sales.xlsx"))
+#> Warning messages:
+#> 1: Sheet "Sales 2023": Row 1 has text only in B1 ("Sales by region, 2023"), but the rows below have up to 5 columns.
+#> ℹ If the header is lower down, give its row: `header = 5`, or the range: `range = "B5:F40"`.
+#> 2: Sheet "Sales 2024": Row 1 has text only in B1 ("Sales by region, 2024"), but the rows below have up to 5 columns.
+#> ℹ If the header is lower down, give its row: `header = 5`, or the range: `range = "B5:F40"`.
 names(all)
 #> [1] "Summary"    "Sales 2023" "Sales 2024" "Regions"    "Notes"
-all[["Sales 2024"]]
+all[["Regions"]]
+#> # A tibble: 5 × 3
+#>   region  manager office
+#>   <chr>   <chr>   <chr>
+#> 1 North   Ana     Oslo
+#> 2 South   Ben     Lima
+#> 3 East    Chen    Pune
+#> 4 West    Dee     Accra
+#> 5 Central Eve     Kyiv
 ```
 
 It takes `read_xlsx()`'s arguments (except `sheet`) and uses them for
@@ -825,7 +843,8 @@ convert and Excel errors; `xlsx_problems()` lists them.
 read_sheets(path, sheets = NULL, ...)
 ```
 
-Reads several sheets. `sheets`: `NULL` for all, a vector of names or
+Reads several sheets. `sheets`: `NULL` for every worksheet (chart
+sheets are skipped unless named), a vector of names or
 positions, or one regular expression matched against the names. `...`
 goes to `read_xlsx()`. Returns a named list of tibbles.
 

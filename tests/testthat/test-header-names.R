@@ -1,0 +1,100 @@
+# docs/r.md, "Header rows and column names".
+
+messy <- function() xlkit_example("messy.xlsx")
+
+test_that("two header rows are joined, and a merged cell names each column", {
+  df <- read_xlsx(messy(), sheet = "Two-row header", header = 4:5)
+  expect_identical(names(df), c("Region", "Income 2020", "Income 2021", "Income 2022"))
+  expect_identical(nrow(df), 4L)
+  expect_identical(df$`Income 2020`, c(61.2, 48.5, 70.4, 55))
+  expect_identical(df$Region, c("North", "South", "East", "West"))
+})
+
+test_that("header = FALSE names columns by letter and reads every row", {
+  df <- read_xlsx(messy(), sheet = "Headers", header = FALSE)
+  expect_identical(names(df), c("A", "B", "C", "D", "E"))
+  expect_identical(nrow(df), 5L)
+  expect_identical(df$A[[1]], "Region")
+  expect_null(attr(df$A, "label"))
+})
+
+test_that("header = 1 is the same as the default here", {
+  expect_identical(
+    quietly(read_xlsx(messy(), sheet = "Headers", header = 1)),
+    quietly(read_xlsx(messy(), sheet = "Headers"))
+  )
+})
+
+test_that("blank and repeated headers are repaired with a message that names them", {
+  msg <- expect_message(df <- read_xlsx(messy(), sheet = "Headers"), class = "rlang_message")
+  expect_identical(names(df), c("Region", "Total", "Total_C", "D", "Share %"))
+  text <- conditionMessage(msg)
+  expect_match(text, "^New names:")
+  expect_match(text, "C1 \"Total\" is `Total_C` (it repeats B1)", fixed = TRUE)
+  expect_match(text, "D1 (blank) is `D`", fixed = TRUE)
+  expect_match(text, "Choose another rule with `names =`, or set your own with `names(df) <- ...`.", fixed = TRUE)
+})
+
+test_that("each names rule gives the names in the docs' table", {
+  read <- function(rule) suppressMessages(names(read_xlsx(messy(), sheet = "Headers", names = rule)))
+  expect_identical(read("unique"), c("Region", "Total", "Total_C", "D", "Share %"))
+  expect_identical(read("snake"), c("region", "total", "total_c", "d", "share_percent"))
+  expect_identical(read("stata"), c("Region", "Total", "Total_C", "D", "Share"))
+  expect_identical(read("lower"), c("region", "total", "total_c", "d", "share %"))
+  expect_identical(read("upper"), c("REGION", "TOTAL", "TOTAL_C", "D", "SHARE %"))
+  expect_identical(read(c("stata", "lower")), c("region", "total", "total_c", "d", "share"))
+  expect_identical(read(function(x) toupper(substr(x, 1, 3))), c("REG", "TOT", "TOT_C", "D", "SHA"))
+})
+
+test_that("only repairs get a message, not the rule's own changes", {
+  expect_no_message(read_xlsx(xlkit_example("report.xlsx"), names = "upper"))
+  expect_no_message(read_xlsx(edge(), sheet = "Mixed", names = "stata"))
+})
+
+test_that("names are unique under every rule, and Stata names are valid", {
+  # Names: "Age at first birth", "Total", "total", blank, "Share %",
+  # "2020", "#", "if", "Region", "Region".
+  for (rule in list("unique", "snake", "stata", "lower", "upper", c("snake", "upper"))) {
+    n <- suppressMessages(names(read_xlsx(edge(), sheet = "Names", names = rule)))
+    expect_false(anyDuplicated(n) > 0, label = paste(rule, collapse = "+"))
+    expect_true(all(nzchar(n)))
+  }
+  stata <- suppressMessages(names(read_xlsx(edge(), sheet = "Names", names = "stata")))
+  expect_identical(
+    stata,
+    c("Age_at_first_birth", "Total", "total", "D", "Share", "_2020", "G", "_if", "Region", "Region_J")
+  )
+  expect_true(all(grepl("^[A-Za-z_][A-Za-z0-9_]{0,31}$", stata)))
+  snake <- suppressMessages(names(read_xlsx(edge(), sheet = "Names", names = "snake")))
+  expect_identical(
+    snake,
+    c("age_at_first_birth", "total", "total_c", "d", "share_percent", "2020", "number", "if", "region", "region_j")
+  )
+})
+
+test_that("a long header is cut to 32 characters under \"stata\", still unique", {
+  out <- xlkit:::make_col_names(
+    c(strrep("a", 40), strrep("a", 40)), c("A", "B"), "stata"
+  )
+  expect_identical(nchar(out$names), c(32L, 32L))
+  expect_false(anyDuplicated(out$names) > 0)
+})
+
+test_that("a name that differs from its header keeps the header as its label", {
+  df <- suppressMessages(read_xlsx(messy(), sheet = "Headers", names = "snake"))
+  expect_identical(attr(df$share_percent, "label"), "Share %")
+  expect_identical(attr(df$total_c, "label"), "Total")
+  expect_identical(attr(df$region, "label"), "Region")
+  expect_null(attr(df$d, "label"))
+  same <- read_xlsx(xlkit_example("report.xlsx"))
+  expect_null(attr(same$id, "label"))
+  long <- read_xlsx(edge(), sheet = "Names", names = "snake") |> suppressMessages()
+  expect_identical(attr(long$age_at_first_birth, "label"), "Age at first birth")
+})
+
+test_that("a names function must return one name per header", {
+  expect_error(
+    read_xlsx(xlkit_example("report.xlsx"), names = function(x) "a"),
+    "must return a character vector as long as its input"
+  )
+})
