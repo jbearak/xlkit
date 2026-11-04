@@ -123,9 +123,11 @@ write_xlsx <- function(x, path, sheet = "Sheet1", header = "names", values = "la
   if (file.exists(full) && !replace) existing_file(path, full, call)
 
   plan <- plan_workbook(sheets, args, formats, widths, styles, merges, call)
-  write_plan(plan, path, full, call)
+  # Say what the plan found before anything is written, so a warning
+  # turned into an error (options(warn = 2)) leaves an existing file alone.
   for (m in plan$messages) rlang::inform(m)
   if (!is.null(plan$warning)) rlang::warn(plan$warning)
+  write_plan(plan, path, full, replace, call)
   invisible(path)
 }
 
@@ -457,7 +459,10 @@ existing_file <- function(path, full, call) {
 
 # Write the plan to a temporary file beside `full`, then move it over
 # `full`, so an error leaves an existing file as it was (ADR 0005).
-write_plan <- function(plan, path, full, call) {
+# Without `replace`, the new file is linked into place, which fails if
+# another program made `full` since the check above, so it is never
+# overwritten.
+write_plan <- function(plan, path, full, replace, call) {
   tmp <- tempfile(paste0(".", basename(full), "-"), tmpdir = dirname(full), fileext = ".tmp")
   on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
   res <- .Call(C_xl_write, enc2utf8(tmp), plan$parts)
@@ -469,6 +474,12 @@ write_plan <- function(plan, path, full, call) {
         i = "Please report this at <https://github.com/jbearak/xlkit/issues>.")
     )
     rlang::abort(msg, call = call)
+  }
+  if (!replace) {
+    linked <- suppressWarnings(file.link(tmp, full))
+    if (linked) return(invisible())
+    if (file.exists(full)) existing_file(path, full, call)
+    # A file system without hard links: fall back on a rename.
   }
   why <- NULL
   ok <- withCallingHandlers(

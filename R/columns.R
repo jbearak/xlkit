@@ -12,6 +12,16 @@ W_FORMULA <- 4L
 
 excel_text_max <- 32767
 
+# A text's length as Excel counts it, in UTF-16 units, so a character
+# beyond U+FFFF (most emoji) counts as two. Only text longer than half
+# the limit can be too long, so only that is measured.
+text_units <- function(x) {
+  n <- nchar(x, allowNA = TRUE)
+  long <- which(!is.na(n) & n > excel_text_max %/% 2)
+  if (length(long)) n[long] <- lengths(iconv(x[long], "UTF-8", "UTF-16LE", toRaw = TRUE)) %/% 2
+  n
+}
+
 # Excel serial numbers for R dates (days since 1970-01-01). Excel counts
 # a 29 February 1900 that did not exist, so dates before 1 March 1900 are
 # one less than the count from 1970 gives.
@@ -205,6 +215,8 @@ number_width <- function(v, format) {
   }
   if (grepl("[eE][+-]", literal)) return(nchar(literal) + quoted)
   percent <- grepl("%", literal, fixed = TRUE)
+  # A section of text only, or none (";;;" hides the value), shows no digits.
+  if (!grepl("[0#?]", literal)) return(nchar(literal) + quoted)
   parts <- strsplit(literal, ".", fixed = TRUE)[[1]]
   decimals <- if (length(parts) > 1) nchar(gsub("[^0#?]", "", parts[[2]])) else 0
   int_digits <- nchar(gsub("[^0]", "", parts[[1]]))

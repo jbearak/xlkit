@@ -121,12 +121,13 @@ plan_workbook <- function(sheets, args, formats, widths, styles, merges, call) {
             i = "Fix its encoding first, such as with `iconv(x, from = \"latin1\", to = \"UTF-8\")`."
           ), call = call)
         }
-        long <- which(cells$kind == W_TEXT & nchar(cells$str, allowNA = TRUE) > excel_text_max)
+        units <- text_units(cells$str)
+        long <- which(cells$kind == W_TEXT & units > excel_text_max)
         if (length(long)) {
           rlang::abort(c(
             label(paste0("`", name, "` has text longer than the 32,767 characters a cell holds: ",
                          and_list_first(paste0(cell_ref(body_rows[long], j), " (",
-                                               fmt_count(nchar(cells$str[long])), " characters)")), ".")),
+                                               fmt_count(units[long]), " characters)")), ".")),
             i = "Shorten it, such as with `substr(x, 1, 32767)`, or split it across cells."
           ), call = call)
         }
@@ -161,7 +162,10 @@ plan_workbook <- function(sheets, args, formats, widths, styles, merges, call) {
         hw <- if (length(header_text)) max(nchar(header_text, type = "width"), 0, na.rm = TRUE) else 0
         if (!is.null(args$header_style$bold) && isTRUE(args$header_style$bold)) hw <- hw * 1.1
         if (isTRUE(args$filter)) hw <- hw + 2
-        w <- max(hw, cells_width(cells, numfmt))
+        # Size the column for the format its cells will show, which a
+        # column style's `format` overrides.
+        shown_fmt <- if (!is.null(styles$columns[[name]]$format)) styles$columns[[name]]$format else numfmt
+        w <- max(hw, cells_width(cells, shown_fmt))
         col_width[j] <- max(if (j <= length(col_width) && !is.na(col_width[j])) col_width[j] else 0, w)
       }
       tables[[length(tables) + 1]] <- list(top = if (is.null(t$title)) header_top else header_top - 1L,
@@ -272,9 +276,9 @@ var_label <- function(x, otherwise) {
 }
 
 check_text_length <- function(text, what, cell, call) {
-  if (nchar(text) > excel_text_max) {
+  if (text_units(text) > excel_text_max) {
     rlang::abort(c(
-      paste0(what, " in ", cell, " has ", fmt_count(nchar(text)),
+      paste0(what, " in ", cell, " has ", fmt_count(text_units(text)),
              " characters, more than the 32,767 a cell holds."),
       i = "Shorten it, such as with `substr(x, 1, 32767)`."
     ), call = call)
