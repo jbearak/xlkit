@@ -108,6 +108,13 @@ write_sheet <- function(x, path, sheet, at = NULL, after = NULL, header = "names
     blocks <- matrix(parts[[10]], nrow = 4)
     n_cells <- length(parts[[11]])
     n_header <- switch(if (isFALSE(args$header)) "none" else args$header, none = 0L, names = 1L, labels = 1L, both = 2L)
+    # Each column's date class, so Rust counts its dates in the workbook's
+    # date system. The first blocks are the columns, header cells first.
+    dclass <- integer(n_cells)
+    starts <- cumsum(c(0L, blocks[4, ]))
+    for (j in seq_along(x)) {
+      dclass[starts[[j]] + n_header + seq_len(nrow(x))] <- date_class(x[[j]])
+    }
     p <- new_cell_plan(sh$name)
     edit <- c(parts[1:4], list(
       enc2utf8(c(sh$name, after)),
@@ -118,7 +125,7 @@ write_sheet <- function(x, path, sheet, at = NULL, after = NULL, header = "names
       as.integer(blocks[-1, , drop = FALSE]),
       parts[[11]],
       parts[[12]],
-      integer(n_cells),
+      dclass,
       parts[[13]],
       parts[[14]],
       as.integer(c(0L, 0L, n_header + nrow(x), length(x), n_header))

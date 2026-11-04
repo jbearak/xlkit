@@ -588,6 +588,20 @@ def unsafe():
     save(wb, os.path.join(FIXTURES, "unsafe.xlsx"), change)
 
 
+def inherited():
+    """Cells without a style of their own in a styled column and a styled
+    row, which show the column's or the row's format."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.column_dimensions["A"].font = Font(italic=True)
+    ws.column_dimensions["A"].fill = PatternFill("solid", fgColor="FFFF00")
+    ws["A1"] = 5
+    ws.row_dimensions[3].font = Font(bold=True)
+    ws["B3"] = 7
+    save(wb, os.path.join(FIXTURES, "inherited.xlsx"))
+
+
 def main():
     os.makedirs(EXTDATA, exist_ok=True)
     os.makedirs(FIXTURES, exist_ok=True)
@@ -602,6 +616,7 @@ def main():
     review()
     features()
     unsafe()
+    inherited()
 
 
 if __name__ == "__main__":

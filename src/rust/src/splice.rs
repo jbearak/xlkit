@@ -90,10 +90,17 @@ pub struct Edit {
 
 /// Chooses the style index (`s`) of each written cell.
 pub trait Styler {
-    /// `edit` is the index into the edits; `existing` the cell's own `s`
-    /// (None for a new cell); `inherited` the style a new cell gets from
-    /// its row or column. Returns the `s` to write (None or 0: none).
-    fn style(&mut self, edit: usize, existing: Option<u32>, inherited: Option<u32>) -> Option<u32>;
+    /// `edit` is the index into the edits; `present` whether the cell has
+    /// an element already; `existing` its own `s`; `inherited` the style
+    /// it shows from its row or column when it has no `s` of its own.
+    /// Returns the `s` to write (None or 0: none).
+    fn style(
+        &mut self,
+        edit: usize,
+        present: bool,
+        existing: Option<u32>,
+        inherited: Option<u32>,
+    ) -> Option<u32>;
 }
 
 /// Keeps each cell's own style, as Table Viewer does.
@@ -102,7 +109,7 @@ pub struct KeepStyle;
 
 #[cfg(test)]
 impl Styler for KeepStyle {
-    fn style(&mut self, _: usize, existing: Option<u32>, _: Option<u32>) -> Option<u32> {
+    fn style(&mut self, _: usize, _: bool, existing: Option<u32>, _: Option<u32>) -> Option<u32> {
         existing
     }
 }
@@ -528,6 +535,16 @@ pub(crate) fn remove_attr(tag: &str, attr: &str) -> String {
 pub(crate) fn replace_attr(tag: &str, attr: &str, value: &str) -> String {
     let b = tag.as_bytes();
     match attr_span(b, 0, b.len(), attr.as_bytes()) {
+        // `value` is escaped for double quotes; inside single quotes an
+        // apostrophe must be escaped too.
+        Some((s, e)) if b[s - 1] == b'\'' => {
+            format!(
+                "{}{}{}",
+                &tag[..s],
+                value.replace('\'', "&apos;"),
+                &tag[e..]
+            )
+        }
         Some((s, e)) => format!("{}{}{}", &tag[..s], value, &tag[e..]),
         None => tag.to_string(),
     }
@@ -1131,6 +1148,20 @@ pub fn scan_rows(
     Ok(out)
 }
 
+/// Whether a cell holds the master of a shared formula: an `<f t="shared">`
+/// with the `ref` its followers use.
+fn shared_master(xml: &[u8], cell: &Span) -> bool {
+    let ign = Ignorable::new(xml, cell.inner_start, cell.inner_end);
+    let Some((s, _)) = next_by_local(xml, cell.inner_start, cell.inner_end, &ign, b"f") else {
+        return false;
+    };
+    let Some(e) = find_tag_end(xml, s, cell.inner_end) else {
+        return false;
+    };
+    get_attr(xml, s, e + 1, "t").as_deref() == Some("shared")
+        && attr_span(xml, s, e + 1, b"ref").is_some()
+}
+
 /// Whether `[from, to)` holds a live `<f>` (with any prefix).
 fn has_formula(xml: &[u8], from: usize, to: usize) -> bool {
     let ign = Ignorable::new(xml, from, to);
@@ -1411,9 +1442,16 @@ pub fn apply_edits(
     let groups = grouped(xml);
     for (&(r, c), &i) in last.iter() {
         if let Some(&(kind, g)) = groups.iter().find(|(_, g)| contains(*g, r, c)) {
-            let formula_ok = matches!(edits[i].value, Value::Formula(_) | Value::Restyle)
-                && kind == "shared"
-                || edits[i].value == Value::Restyle;
+            // A follower of a shared formula may become a formula of its
+            // own (Table Viewer's rule); its master may not, since the
+            // followers take their formula from it.
+            let master = rows
+                .cells
+                .get(&(r, c))
+                .is_some_and(|s| shared_master(xml, s));
+            let formula_ok =
+                matches!(edits[i].value, Value::Formula(_)) && kind == "shared" && !master
+                    || edits[i].value == Value::Restyle;
             if !formula_ok {
                 return Err(SpliceError::Grouped(r, c, kind, g));
             }
@@ -1452,7 +1490,7 @@ pub fn apply_edits(
             let mut cells = String::new();
             for &i in idx {
                 let e = &edits[i];
-                let style = styler.style(i, None, col_style(e.col));
+                let style = styler.style(i, false, None, col_style(e.col));
                 if is_empty(&e.value) && style.unwrap_or(0) == 0 {
                     continue;
                 }
@@ -1484,7 +1522,12 @@ pub fn apply_edits(
                         .collect();
                     digits.parse::<u32>().ok()
                 });
-                let style = styler.style(i, existing, None);
+                let inherited = if existing.is_none() {
+                    row_style.or_else(|| col_style(e.col))
+                } else {
+                    None
+                };
+                let style = styler.style(i, true, existing, inherited);
                 if e.value == Value::Restyle {
                     let new = match style {
                         Some(s) if s != 0 => set_attr(&tag, "s", &s.to_string()),
@@ -1509,7 +1552,7 @@ pub fn apply_edits(
                 });
                 grow(&mut cover, e.row, e.col);
             } else {
-                let style = styler.style(i, None, row_style.or_else(|| col_style(e.col)));
+                let style = styler.style(i, false, None, row_style.or_else(|| col_style(e.col)));
                 if is_empty(&e.value) && style.unwrap_or(0) == 0 {
                     continue;
                 }
@@ -1572,13 +1615,18 @@ pub fn apply_edits(
                 }
             };
         }
+        // A cell after the last one goes before the row's <extLst>, which
+        // comes last in a row.
+        let tail = next_by_local(xml, pos, owner.inner_end, &ign, b"extLst")
+            .map(|(s, _)| s)
+            .unwrap_or(owner.inner_end);
         for (col, _, t) in ins {
             let at = existing
                 .iter()
                 .filter(|(c, _)| *c > col)
                 .map(|(_, s)| *s)
                 .min()
-                .unwrap_or(owner.inner_end);
+                .unwrap_or(tail);
             splices.push(Splice {
                 start: at,
                 end: at,
@@ -1653,7 +1701,7 @@ pub fn replace_sheet_data(
         let mut cells = String::new();
         while k < order.len() && edits[order[k]].row == row {
             let i = order[k];
-            let style = styler.style(i, None, None);
+            let style = styler.style(i, false, None, None);
             if !(is_empty(&edits[i].value) && style.unwrap_or(0) == 0) {
                 cells.push_str(&cell_xml(&edits[i], style, &p));
                 grow(&mut cover, row, edits[i].col);
@@ -2015,5 +2063,52 @@ mod tests {
             add_merges(xml.as_bytes(), &[[0, 1, 0, 2]]),
             Err(SpliceError::MergeOverlap(..))
         ));
+    }
+
+    #[test]
+    fn a_shared_formula_master_is_not_replaced() {
+        let xml = "<worksheet><sheetData><row r=\"1\"><c r=\"A1\"><f t=\"shared\" ref=\"A1:A2\" si=\"0\">B1</f><v>1</v></c></row><row r=\"2\"><c r=\"A2\"><f t=\"shared\" si=\"0\"/><v>1</v></c></row></sheetData></worksheet>";
+        let f = |r| {
+            vec![Edit {
+                row: r,
+                col: 0,
+                value: Value::Formula("C1".into()),
+            }]
+        };
+        assert_eq!(
+            apply_edits(xml.as_bytes(), &f(0), &mut KeepStyle).err(),
+            Some(SpliceError::Grouped(0, 0, "shared", [0, 0, 1, 0]))
+        );
+        // A follower may become a formula of its own.
+        assert!(apply_edits(xml.as_bytes(), &f(1), &mut KeepStyle).is_ok());
+    }
+
+    #[test]
+    fn a_single_quoted_attribute_takes_an_apostrophe() {
+        assert_eq!(
+            set_attr(
+                "<tableColumn id='1' name='old'/>",
+                "name",
+                &encode_attr("O'Brien")
+            ),
+            "<tableColumn id='1' name='O&apos;Brien'/>"
+        );
+    }
+
+    #[test]
+    fn a_new_cell_goes_before_the_rows_extension_list() {
+        let xml = "<worksheet><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v><extLst/></c><extLst><ext uri=\"x\"/></extLst></row></sheetData></worksheet>";
+        let out = edit(
+            xml,
+            &[Edit {
+                row: 0,
+                col: 1,
+                value: Value::Number(2.0),
+            }],
+        );
+        assert_eq!(
+            out,
+            "<worksheet><sheetData><row r=\"1\"><c r=\"A1\"><v>1</v><extLst/></c><c r=\"B1\"><v>2</v></c><extLst><ext uri=\"x\"/></extLst></row></sheetData></worksheet>"
+        );
     }
 }

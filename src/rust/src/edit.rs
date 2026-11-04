@@ -62,6 +62,8 @@ pub enum Failure {
     TableOverlap(String),
     TableNames(String),
     MergeHides(String),
+    /// A date before 1904-01-01 for a workbook in the 1904 date system.
+    Before1904(String),
 }
 
 impl crate::Fail for Failure {
@@ -86,6 +88,7 @@ impl crate::Fail for Failure {
             Failure::TableOverlap(_) => 30,
             Failure::TableNames(_) => 31,
             Failure::MergeHides(_) => 32,
+            Failure::Before1904(_) => 33,
         }
     }
 
@@ -106,7 +109,8 @@ impl crate::Fail for Failure {
             | Failure::TableCleared(m)
             | Failure::TableOverlap(m)
             | Failure::TableNames(m)
-            | Failure::MergeHides(m) => m.clone(),
+            | Failure::MergeHides(m)
+            | Failure::Before1904(m) => m.clone(),
             Failure::Refused(c) => c.to_string(),
             Failure::NoStyles | Failure::NoSheetData => String::new(),
         }
@@ -348,11 +352,25 @@ fn fallback_format(dclass: i32) -> &'static str {
 }
 
 impl Styler for PlanStyler<'_> {
-    fn style(&mut self, i: usize, existing: Option<u32>, inherited: Option<u32>) -> Option<u32> {
-        let own = if self.replace {
+    fn style(
+        &mut self,
+        i: usize,
+        present: bool,
+        existing: Option<u32>,
+        inherited: Option<u32>,
+    ) -> Option<u32> {
+        // The format the cell shows, which a new format is built on; and
+        // what it keeps when nothing changes (a cell with an element keeps
+        // its own `s`, a new one takes its row's or column's).
+        let shown = if self.replace {
             None
         } else {
             existing.or(inherited)
+        };
+        let own = if self.replace || present {
+            existing.filter(|_| !self.replace)
+        } else {
+            inherited
         };
         let ov = self.fmts.get(i).copied().unwrap_or(-1);
         let dc = self.dclass.get(i).copied().unwrap_or(0);
@@ -367,7 +385,9 @@ impl Styler for PlanStyler<'_> {
             }
             return own;
         };
-        let base = own.filter(|&b| (b as usize) < styles.n_xfs()).unwrap_or(0);
+        let base = shown
+            .filter(|&b| (b as usize) < styles.n_xfs())
+            .unwrap_or(0);
         let value = self.values.get(i).copied().unwrap_or(0.0);
         let need_date = dc > 0 && !explicit_format && !shows(styles.kind(base, value), dc);
         if ov < 0 && !need_date {
@@ -751,6 +771,18 @@ fn new_sheet_xml(plan: &EditPlan) -> String {
     )
 }
 
+/// Whether the workbook counts dates from 1904 (`<workbookPr date1904>`).
+fn date_1904(wb: &[u8]) -> bool {
+    live_elements(wb, b"workbookPr")
+        .first()
+        .is_some_and(|(_, s)| {
+            matches!(
+                attr(&tag_text(wb, s), "date1904").as_deref().map(str::trim),
+                Some("1") | Some("true")
+            )
+        })
+}
+
 fn find_last(xml: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::rfind(xml, needle)
 }
@@ -831,6 +863,20 @@ pub fn edit(src: &str, dst: &str, plan: &EditPlan) -> Result<Edited, Failure> {
     };
 
     let (mut edits, mut fmts, mut dcs, mut vals) = plan_edits(plan)?;
+    // R counts dates in the 1900 date system; a 1904 workbook counts from
+    // 1904-01-01, 1,462 days later, and cannot hold an earlier date.
+    if date_1904(&wb) {
+        for (i, e) in edits.iter_mut().enumerate() {
+            if let (2 | 3, Value::Number(x)) = (dcs[i], &e.value) {
+                let x = x - 1462.0;
+                if x < 0.0 {
+                    return Err(Failure::Before1904(cell_ref(e.row, e.col)));
+                }
+                e.value = Value::Number(x);
+                vals[i] = x;
+            }
+        }
+    }
     let pieces: Vec<[u32; 5]> = plan
         .pieces
         .chunks(5)
@@ -1009,8 +1055,15 @@ pub fn edit(src: &str, dst: &str, plan: &EditPlan) -> Result<Edited, Failure> {
             .map(|e| (e.row, e.col))
             .collect();
         if !replace && !is_new {
+            // A cell given only a style keeps its value, which the merge
+            // would hide.
+            let emptied: HashSet<(u32, u32)> = edits
+                .iter()
+                .filter(|e| e.value != Value::Restyle)
+                .map(|e| (e.row, e.col))
+                .collect();
             for cell in splice::filled_cells(&sheet_xml, *m).map_err(splice_failure)? {
-                if cell != (m[0], m[1]) && !written.contains(&cell) {
+                if cell != (m[0], m[1]) && !emptied.contains(&cell) {
                     hidden.push(cell);
                 }
             }
