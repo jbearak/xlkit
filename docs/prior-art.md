@@ -1389,7 +1389,7 @@ Turning detection off means leaving `cellDates` false and `cellNF` false; you th
 
 Empty cells are absent from the sheet map. In object output they are skipped, so the key is missing from that row's object, unless `defval` is set. Then every empty cell gets that value: `sheet_to_json(ws, {defval: null})`. Blank rows are skipped in object mode and kept in array mode (`blankrows`).
 
-Error cells have `t: "e"`, a numeric code in `v` and the text (`#N/A`) in `w`. `sheet_to_json` handles them as `v = (v == 0 ? null : void 0)` (`SJ` bits/90_utils.js#L26). So `#NULL!` becomes `null`, and every other error, including `#N/A` and `#DIV/0!`, is dropped like an empty cell or replaced by `defval`. The user cannot tell an error from a blank in the output. With `raw: false` you get the error text instead.
+Error cells have `t: "e"`, a numeric code in `v` and the text (`#N/A`) in `w`. `sheet_to_json` handles them as `v = (v == 0 ? null : void 0)` (`SJ` bits/90_utils.js#L26). So `#NULL!` becomes `null`, and every other error, including `#N/A` and `#DIV/0!`, is dropped like an empty cell or replaced by `defval`. The user cannot tell an error from a blank in the output, with `raw: false` or without it, because the error is discarded before formatting (`SJ` bits/90_utils.js#L26-L40). To tell them apart, inspect the worksheet's cell objects (`ws["D4"].t === "e"`, text in `.w`).
 
 ### 8 Read every sheet
 

@@ -130,6 +130,7 @@ The two web pages have no copy in the sparse clone. Their source is `doc/source/
 |---|---|---:|
 | polars `README.md` | install, overview | 705 |
 | polars `docs/source/user-guide/io/excel.md` | user guide: engines, read, write | 352 |
+| polars `docs/source/src/python/user-guide/io/excel.py` | the guide's examples, which its `{{code_block(...)}}` lines include | 90 |
 | polars `py-polars/docs/source/reference/io.rst` lines 53-60 | reference index for Excel | about 10 |
 | polars `py-polars/src/polars/io/spreadsheet/functions.py` lines 255-410 | `read_excel` signature and docstring | 849 |
 | polars `py-polars/src/polars/dataframe/frame.py` lines 3383-3794 | `DataFrame.write_excel` signature and docstring | 2,278 |
@@ -204,25 +205,27 @@ To trim, keep `README.md` lines 1-1466 (install through styles), 2137-2192 (file
 
 ## Support by task
 
-"yes" means the docs and source show a function for the task. "limited" means a function exists but the gap noted below the table matters for xlkit's use. "no" means the user has to write a loop or use another package.
+"yes" means the docs and source show a function for the task. "limited" means the library does the task, but the user needs a loop around its calls (over sheets, rows or cells) or the gap noted below the table matters for xlkit's use. "no" means the library has nothing for the task: the user has to write the task's logic themselves or use another package.
 
-For the rubric, "yes" and "limited" both mean the library supports the task, so the task is common to xlkit and that library. "no" means the task is ours-only for that pair.
+For the rubric, "yes" and "limited" both mean the library supports the task, so the task is common to xlkit and that library, and the loop or the gap counts against it in the scores. "no" means the task is ours-only for that pair.
 
-| Task | readxl + writexl | openxlsx2 | pandas | openpyxl | polars | XLSX.jl | SheetJS CE | ExcelJS |
-|---|---|---|---|---|---|---|---|---|
-| 1 install | yes | yes | yes | yes | yes | yes | yes | yes |
-| 2 read a sheet | yes | yes | yes | limited | yes | yes | limited | limited |
-| 3 choose what to read | yes | yes | limited | yes | limited | yes | yes | limited |
-| 4 header and names | limited | limited | yes | no | limited | limited | limited | no |
-| 5 column types | yes | yes | yes | no | yes | limited | no | no |
-| 6 dates and times | yes | yes | limited | yes | limited | limited | yes | limited |
-| 7 missing and errors | limited | yes | limited | yes | limited | limited | limited | yes |
-| 8 every sheet at once | no | no | yes | no | yes | no | no | no |
-| 9 write one table | yes | yes | yes | limited | yes | yes | yes | yes |
-| 10 several tables | limited | yes | yes | yes | yes | yes | yes | yes |
-| 11 format output | yes | yes | limited | yes | yes | limited | limited | yes |
-| 12 edit existing workbook | no | yes | limited | yes | no | yes | limited | limited |
-| 13 labels | limited | limited | no | no | no | no | no | no |
+Stata is classified from general knowledge of its commands, as `AGENTS.md` requires; its documentation is not bundled. Task 1 does not apply to Stata, which needs no install, so it is not common with Stata.
+
+| Task | readxl + writexl | openxlsx2 | pandas | openpyxl | polars | XLSX.jl | SheetJS CE | ExcelJS | Stata |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 install | yes | yes | yes | yes | yes | yes | yes | yes | n/a |
+| 2 read a sheet | yes | yes | yes | limited | yes | yes | limited | limited | yes |
+| 3 choose what to read | yes | yes | limited | yes | limited | yes | yes | limited | yes |
+| 4 header and names | limited | limited | yes | no | limited | limited | limited | no | limited |
+| 5 column types | yes | yes | yes | no | yes | limited | no | no | limited |
+| 6 dates and times | yes | yes | limited | yes | limited | limited | yes | limited | yes |
+| 7 missing and errors | limited | yes | limited | yes | limited | limited | limited | yes | limited |
+| 8 every sheet at once | limited | limited | yes | limited | yes | limited | limited | limited | limited |
+| 9 write one table | yes | yes | yes | limited | yes | yes | yes | yes | yes |
+| 10 several tables | limited | yes | yes | yes | yes | yes | yes | yes | yes |
+| 11 format output | yes | yes | limited | yes | yes | limited | limited | yes | yes |
+| 12 edit existing workbook | no | yes | limited | yes | no | yes | limited | limited | yes |
+| 13 labels | no | limited | no | no | no | no | no | no | yes |
 
 ### readxl + writexl
 
@@ -233,12 +236,12 @@ For the rubric, "yes" and "limited" both mean the library supports the task, so 
 5. yes: `col_types =` (positional only), `guess_max =` (default 1,000 rows).
 6. yes: detection from the number format, 1904 flag read, always `POSIXct` in UTC; turned off only through `col_types`.
 7. limited: `na =`; Excel error cells become `NA` with no trace.
-8. no: documented idiom `lapply(excel_sheets(p), read_excel, path = p)`.
+8. limited: documented idiom `lapply(excel_sheets(p), read_excel, path = p)`, a loop over sheets.
 9. yes: `write_xlsx(df, path)`.
 10. limited: `write_xlsx(list(a = df1, b = df2))`, one table per sheet; no start cell.
 11. yes: `xl_sheet(cols =, freeze =, auto_colwidth =, autofilter =, merge =)`, `xl_num_format()`, `format_headers =`.
 12. no: writexl only creates new files (writexl #29, #66).
-13. limited: factors are written as their labels; `haven_labelled` values are written as codes; variable labels are ignored.
+13. no: factors are written as their labels, but `haven_labelled` values are written as codes and variable labels are ignored, so neither half of the scenario works.
 
 ### openxlsx2
 
@@ -249,7 +252,7 @@ For the rubric, "yes" and "limited" both mean the library supports the task, so 
 5. yes: `types = c(name = "character")`, `convert =`.
 6. yes: `detect_dates =`, 1904 flag read, `Date` for date-only formats, UTC datetimes.
 7. yes: `na =` as a vector or `list(strings =, numbers =)`; error cells kept as text.
-8. no: loop over `wb_get_sheet_names()` on a loaded workbook.
+8. limited: a loop over `wb_get_sheet_names()` on a loaded workbook.
 9. yes: `write_xlsx()`, or `wb_workbook()$add_worksheet()$add_data()$save()`.
 10. yes: named list to sheets; `wb_add_data(dims = "A20")` for several tables on one sheet.
 11. yes: `wb_add_font()`, `wb_add_numfmt()`, `wb_set_col_widths(widths = "auto")`, `wb_freeze_pane()`, `wb_add_filter()`, `wb_merge_cells()`.
@@ -281,7 +284,7 @@ For the rubric, "yes" and "limited" both mean the library supports the task, so 
 5. no: each cell has its own type.
 6. yes: per-cell detection from the number format, `wb.epoch` for 1904; no off switch; time-zone-aware values raise.
 7. yes: `None` for empty cells, error text with `data_type == "e"`.
-8. no: loop over `wb.worksheets`.
+8. limited: a loop over `wb.worksheets`.
 9. limited: `Workbook()`, `ws.append()`, `dataframe_to_rows()`, `wb.save()`.
 10. yes: `create_sheet()`, `ws.cell(row =, column =)`.
 11. yes: `number_format`, `Font(bold = True)`, `column_dimensions[...].width` (no autofit), `freeze_panes`, `auto_filter.ref`, `merge_cells()`.
@@ -313,7 +316,7 @@ For the rubric, "yes" and "limited" both mean the library supports the task, so 
 5. limited: `infer_eltypes =` promotes over the whole column or falls back to `Any`; no per-column override.
 6. limited: automatic from the number format, 1904 handled; no off switch; no time zones.
 7. limited: `missing_strings =`; error cells read as `missing`; `iserror()` / `geterror()` per cell only.
-8. no: loop over `sheetnames()`.
+8. limited: a loop over `sheetnames()`.
 9. yes: `XLSX.writetable(file, df; overwrite =)`; refuses to overwrite by default.
 10. yes: `writetable(file, "A" => df1, "B" => df2)`; `writetable!(sheet, df; anchor_cell =)`.
 11. limited: `setFormat()`, `setFont()`, `setColumnWidth()`, `freezePanes()`, `mergeCells()`; autofilter only through `as_table = true`; no autofit.
@@ -329,7 +332,7 @@ For the rubric, "yes" and "limited" both mean the library supports the task, so 
 5. no: per-cell types only; `raw` / `rawNumbers` switches.
 6. yes: `cellDates`, `UTC`, `dateNF`, `WBProps.date1904`; several open date bugs.
 7. limited: `defval =`; error cells other than `#NULL!` vanish in `sheet_to_json`.
-8. no: loop over `wb.SheetNames`.
+8. limited: a loop over `wb.SheetNames`.
 9. yes: `json_to_sheet()` / `aoa_to_sheet()` + `book_new()` + `writeFile()`.
 10. yes: `book_append_sheet()`; `sheet_add_aoa()` / `sheet_add_json()` with `origin =`.
 11. limited: number formats (`cell.z`), widths (`!cols`), merges (`!merges`), autofilter (`!autofilter`); bold, freeze panes and autofit are SheetJS Pro only.
@@ -345,7 +348,7 @@ For the rubric, "yes" and "limited" both mean the library supports the task, so 
 5. no.
 6. limited: automatic through `isDateFmt`, 1904 handled, no off switch, dates use a UTC wall-clock convention.
 7. yes: `null` for empty cells, `{error: "#N/A"}` for errors.
-8. no: loop with `eachSheet()`.
+8. limited: a loop with `eachSheet()`.
 9. yes: `addWorksheet()` + `columns` + `addRows()` (or `addTable()`) + `writeFile()`.
 10. yes: several `addWorksheet()` calls; `addTable({ref: "H2"})` for a position on one sheet.
 11. yes: `numFmt`, `font`, `width`, `views` with `state: "frozen"`, `autoFilter`, `mergeCells()`; no autofit.

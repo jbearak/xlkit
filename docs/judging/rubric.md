@@ -52,6 +52,18 @@ for the design and four for the documentation.
 
 ### Design
 
+**Counting calls.** A call is a call to a function or method of the
+library, or of the language, that does part of the task. These do not
+count: importing or attaching the library; writing literal data or
+arguments (R's `c()` and `list()`, Python's list and dict literals,
+JavaScript's array and object literals); and printing the result. A
+loop that calls the library once per sheet, row or cell counts as
+several calls.
+
+**Scenarios in parts.** Where a scenario has parts (separated by "Then"
+or "Also", or a second workbook or sheet), score Ergonomics for each
+part and give the task the lowest of them.
+
 **Ergonomics.** The code a user writes for the scenario.
 
 - 3: one call. Each argument says what it means in the workbook (a
@@ -65,10 +77,24 @@ for the design and four for the documentation.
   wrong types, a file overwritten) unless the user knows to change it.
 - 0: not possible with the library.
 
-**Failure behavior.** What the user sees when the scenario goes wrong:
-a misspelled sheet name, a cell that does not fit its column's type, a
-range outside the sheet, an existing file, a part of the template the
-library cannot keep.
+**Failure behavior.** What the user sees when the scenario goes wrong
+in the one way this table fixes for each task. Score that probe only.
+
+| # | probe |
+|---|---|
+| 1 | the build or install fails for a missing system requirement |
+| 2 | the path names a file that does not exist, or a `.csv` renamed `.xlsx` |
+| 3 | the sheet name is misspelled (`Sales 2042`) |
+| 4 | the header has two cells named `Total` and a blank cell |
+| 5 | the cells `n/a` and `12,5` in `amount` cannot be read as numbers |
+| 6 | a date-formatted cell holds a day before 1 March 1900, or a text that is not a date |
+| 7 | `#N/A` and `#DIV/0!` cells in a column read as numbers |
+| 8 | one of the twelve sheets is empty |
+| 9 | `out.xlsx` already exists and was made by someone else |
+| 10 | a sheet name is 40 characters long or contains `/` |
+| 11 | a number format is given for a column name that is not in the table |
+| 12 | the template has a part the library cannot keep (a chart, a pivot table, or a feature it does not model) |
+| 13 | a code in `sex` has no value label |
 
 - 3: the library stops or warns, and the message names the problem and
   what to do (for example, it lists the sheet names, or says which
