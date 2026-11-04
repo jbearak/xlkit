@@ -5,11 +5,13 @@
 //! vectors and then frees with `xl_result_free()`. A failure is a status
 //! code and a UTF-8 message; R raises the error after Rust's memory is
 //! freed. A panic is caught here and reported the same way, so it never
-//! unwinds into C.
+//! unwinds into C. To write, C hands Rust an `XlPlan` of pointers into
+//! R's vectors, which Rust only reads while `xl_write()` runs.
 
 mod format;
 mod package;
 mod read;
+mod write;
 
 use std::ffi::{c_char, CStr, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -90,6 +92,21 @@ impl Out {
     }
 }
 
+/// A failure that R turns into an error: a status code and a message.
+pub(crate) trait Fail {
+    fn code(&self) -> i32;
+    fn message(&self) -> String;
+}
+
+impl Fail for read::Failure {
+    fn code(&self) -> i32 {
+        read::Failure::code(self)
+    }
+    fn message(&self) -> String {
+        read::Failure::message(self)
+    }
+}
+
 fn failed(status: i32, message: &str) -> XlResult {
     let message = CString::new(message.replace('\0', " ")).unwrap_or_default();
     let mut r = Out::default().into_result();
@@ -100,7 +117,7 @@ fn failed(status: i32, message: &str) -> XlResult {
 
 /// Run `f` on the UTF-8 strings behind `args`, turning failures and panics
 /// into a status and message.
-fn run(args: &[*const c_char], f: impl FnOnce(&[&str]) -> Result<Out, read::Failure>) -> XlResult {
+fn run<E: Fail, F: FnOnce(&[&str]) -> Result<Out, E>>(args: &[*const c_char], f: F) -> XlResult {
     let mut strs = Vec::with_capacity(args.len());
     for &p in args {
         if p.is_null() {
@@ -129,7 +146,7 @@ fn run(args: &[*const c_char], f: impl FnOnce(&[&str]) -> Result<Out, read::Fail
 /// `[is_1904, type of each sheet...]`.
 #[no_mangle]
 pub extern "C" fn xl_info(path: *const c_char) -> XlResult {
-    run(&[path], |a| {
+    run::<read::Failure, _>(&[path], |a| {
         let info = read::info(a[0])?;
         let mut out = Out::default();
         out.ints.push(info.is_1904 as i32);
@@ -143,12 +160,46 @@ pub extern "C" fn xl_info(path: *const c_char) -> XlResult {
 /// for each; ints are five per name (see `read::Named`).
 #[no_mangle]
 pub extern "C" fn xl_names(path: *const c_char) -> XlResult {
-    run(&[path], |a| {
+    run::<read::Failure, _>(&[path], |a| {
         let mut out = Out::default();
         for n in read::names(a[0])? {
             out.strings.extend([n.name, n.sheet, n.formula]);
             out.ints.extend(n.dims);
         }
+        Ok(out)
+    })
+}
+
+/// Copy `from` to `to`, creating `to` only if it does not exist: the
+/// check and the creation are one step (`create_new`), so a file another
+/// program made is never overwritten. ints is `[1]` when written, `[0]`
+/// when `to` already exists. A copy that fails part way removes `to`.
+#[no_mangle]
+pub extern "C" fn xl_create_new(from: *const c_char, to: *const c_char) -> XlResult {
+    run::<read::Failure, _>(&[from, to], |a| {
+        let mut out = Out::default();
+        let io = |e: std::io::Error| read::Failure::Io(e.to_string());
+        let mut dest = match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(a[1])
+        {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                out.ints.push(0);
+                return Ok(out);
+            }
+            Err(e) => return Err(io(e)),
+        };
+        let copied = std::fs::File::open(a[0])
+            .and_then(|mut src| std::io::copy(&mut src, &mut dest))
+            .and_then(|_| dest.sync_all());
+        if let Err(e) = copied {
+            drop(dest);
+            let _ = std::fs::remove_file(a[1]);
+            return Err(io(e));
+        }
+        out.ints.push(1);
         Ok(out)
     })
 }
@@ -159,7 +210,7 @@ pub extern "C" fn xl_names(path: *const c_char) -> XlResult {
 /// texts, all column-major.
 #[no_mangle]
 pub extern "C" fn xl_read(path: *const c_char, sheet: *const c_char) -> XlResult {
-    run(&[path, sheet], |a| {
+    run::<read::Failure, _>(&[path, sheet], |a| {
         let grid = read::read_sheet(a[0], a[1])?;
         let mut out = Out::default();
         out.ints.extend([
@@ -178,6 +229,110 @@ pub extern "C" fn xl_read(path: *const c_char, sheet: *const c_char) -> XlResult
         out.doubles = grid.numbers;
         out.strings = grid.texts;
         Ok(out)
+    })
+}
+
+/// A vector R owns: a pointer and a length. The pointer may be NULL when
+/// the length is 0.
+#[repr(C)]
+pub struct XlInts {
+    pub ptr: *const i32,
+    pub n: usize,
+}
+
+#[repr(C)]
+pub struct XlDoubles {
+    pub ptr: *const f64,
+    pub n: usize,
+}
+
+/// UTF-8 strings, NUL-terminated; a NULL string is R's `NA`.
+#[repr(C)]
+pub struct XlStrings {
+    pub ptr: *const *const c_char,
+    pub n: usize,
+}
+
+/// What `xl_write()` writes; see `write::Plan` for what each part means.
+#[repr(C)]
+pub struct XlPlan {
+    pub fmt_ints: XlInts,
+    pub fmt_size: XlDoubles,
+    pub fmt_font: XlStrings,
+    pub fmt_numfmt: XlStrings,
+    pub sheet_names: XlStrings,
+    pub sheet_ints: XlInts,
+    pub width_cols: XlInts,
+    pub width_vals: XlDoubles,
+    pub merges: XlInts,
+    pub blocks: XlInts,
+    pub kinds: XlInts,
+    pub fmts: XlInts,
+    pub nums: XlDoubles,
+    pub strs: XlStrings,
+}
+
+/// # Safety
+/// `ptr` must point to `n` values that outlive the slice, or `n` be 0.
+unsafe fn slice<'a, T>(ptr: *const T, n: usize) -> &'a [T] {
+    if n == 0 || ptr.is_null() {
+        &[]
+    } else {
+        std::slice::from_raw_parts(ptr, n)
+    }
+}
+
+/// # Safety
+/// As `slice()`, and each non-NULL string must be NUL-terminated.
+unsafe fn strings<'a>(s: &XlStrings) -> Result<Vec<Option<&'a str>>, write::Failure> {
+    slice(s.ptr, s.n)
+        .iter()
+        .map(|&p| {
+            if p.is_null() {
+                Ok(None)
+            } else {
+                CStr::from_ptr(p).to_str().map(Some).map_err(|_| {
+                    write::Failure::Plan("a string passed to xlkit's Rust code is not UTF-8".into())
+                })
+            }
+        })
+        .collect()
+}
+
+/// Write a new workbook to `path`. Returns an empty result, or a failure.
+///
+/// # Safety
+/// `plan` must point to an `XlPlan` whose vectors stay valid, unchanged,
+/// while this runs.
+#[no_mangle]
+pub unsafe extern "C" fn xl_write(path: *const c_char, plan: *const XlPlan) -> XlResult {
+    if plan.is_null() {
+        return failed(9, "a NULL plan was passed to xlkit's Rust code");
+    }
+    let p = &*plan;
+    run::<write::Failure, _>(&[path], |a| {
+        let names = strings(&p.sheet_names)?;
+        let plan = write::Plan {
+            fmt_ints: slice(p.fmt_ints.ptr, p.fmt_ints.n),
+            fmt_size: slice(p.fmt_size.ptr, p.fmt_size.n),
+            fmt_font: strings(&p.fmt_font)?,
+            fmt_numfmt: strings(&p.fmt_numfmt)?,
+            sheet_names: names
+                .into_iter()
+                .map(|n| n.ok_or_else(|| write::Failure::Plan("a sheet name is NA".into())))
+                .collect::<Result<_, _>>()?,
+            sheet_ints: slice(p.sheet_ints.ptr, p.sheet_ints.n),
+            width_cols: slice(p.width_cols.ptr, p.width_cols.n),
+            width_vals: slice(p.width_vals.ptr, p.width_vals.n),
+            merges: slice(p.merges.ptr, p.merges.n),
+            blocks: slice(p.blocks.ptr, p.blocks.n),
+            kinds: slice(p.kinds.ptr, p.kinds.n),
+            fmts: slice(p.fmts.ptr, p.fmts.n),
+            nums: slice(p.nums.ptr, p.nums.n),
+            strs: strings(&p.strs)?,
+        };
+        write::write(a[0], &plan)?;
+        Ok(Out::default())
     })
 }
 

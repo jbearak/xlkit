@@ -486,7 +486,7 @@ Each column type becomes:
 | logical | `TRUE` or `FALSE` |
 | `Date` | a date, shown `yyyy-mm-dd` |
 | `POSIXct` | a date-time on the clock of its time zone, shown `yyyy-mm-dd hh:mm:ss` |
-| `hms`, `difftime` | a time, shown `hh:mm:ss` |
+| `hms`, `difftime` | a time, shown `hh:mm:ss` (`[h]:mm:ss` when one is 24 hours or more) |
 | factor | its labels, as text |
 | dtaparser or haven labelled | its value labels, as text (see [labels](#variable-labels-and-value-labels)) |
 | list | an error naming the column |
@@ -513,9 +513,9 @@ moved over it, so an error part way leaves the old file as it was.
 
 Excel's limits are errors that say which value broke them and what to
 do: more than 1,048,576 rows or 16,384 columns (split the table across
-sheets), text longer than 32,767 characters, and a sheet name longer
-than 31 characters or holding `[ ] : * ? / \` (see
-[Write several tables](#write-several-tables)).
+sheets), text longer than 32,767 characters, dates before 1900 (write
+them as text), and a sheet name longer than 31 characters or holding
+`[ ] : * ? / \` (see [Write several tables](#write-several-tables)).
 
 ## Write several tables
 
@@ -532,7 +532,7 @@ stacked with one blank row between them (`gap = 2` for two):
 ```r
 write_xlsx(
   list(Results = list("Table 1. Means" = means, "Table 2. Counts" = counts)),
-  "results.xlsx",
+  "tables.xlsx",
   gap = 2
 )
 ```
@@ -588,9 +588,9 @@ column widths. The arguments that change them:
 | argument | default | does |
 |---|---|---|
 | `formats` | none | number formats by column name |
-| `widths` | `"auto"` | `"auto"` fits contents, up to 60 characters so a long note does not make a column fill the screen; a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted |
-| `freeze` | `TRUE` | keep the header row in view; `FALSE` does not; a cell such as `"B2"` freezes the rows above and the columns left of it |
-| `filter` | `FALSE` | `TRUE` adds filter buttons to the header |
+| `widths` | `"auto"` | `"auto"` fits contents as `formats` and the column styles in `styles` show them, up to 60 characters so a long note does not make a column fill the screen; a number for every column; or a named vector, `c(notes = 80)`, with the rest fitted. A format given to a range in `styles` does not change widths; give that column a width |
+| `freeze` | `TRUE` | keep the header row in view (on a sheet with one table); `FALSE` does not; a cell such as `"B2"` freezes the rows above and the columns left of it |
+| `filter` | `FALSE` | `TRUE` adds filter buttons to the header; Excel allows one filter per sheet, so it needs one table on each |
 | `header_style` | `xl_style(bold = TRUE)` | the header cells' style; `NULL` for plain |
 | `styles` | none | more styles, by column name or by range |
 
@@ -599,11 +599,12 @@ column widths. The arguments that change them:
 `border` (`"thin"`, `"medium"`, `"thick"`, `"double"`, or a vector of
 them for top, right, bottom, left), `align` (`"left"`, `"center"`,
 `"right"`), `valign`, `wrap`, `indent` and `format`. Use it in
-`styles`, by column name or by range, and in `merge`:
+`styles`, by column name or by range, and in `merge`
+(`merge = list("A1:F1" = xl_style(align = "center"))`):
 
 ```r
 write_xlsx(
-  sales, "sales.xlsx",
+  sales, "styled.xlsx",
   styles = list(region = xl_style(bold = TRUE), "A12:F12" = xl_style(border = c(top = "thin")))
 )
 ```
@@ -734,7 +735,7 @@ write_xlsx(df, "survey.xlsx", header = "labels")
 |---|---|
 | `header = "names"` (default) | header row has the column names |
 | `header = "labels"` | header row has the variable labels |
-| `header = "both"` | two header rows: names, then labels |
+| `header = "both"` | two header rows: names, then labels (blank where a column has none) |
 | `header = FALSE` | no header row; the body starts in row 1 |
 | `values = "labels"` (default) | a labelled column is written as its labels; a code without a label is written as the code |
 | `values = "codes"` | a labelled column is written as its codes |
@@ -773,6 +774,7 @@ xlkit does not turn text back into value labels; use
 | `col is text because N of its values are not ...` | a few cells keep a column of numbers or dates from being one | `types =` for that column, or fix the cells |
 | `N cells in col could not be read as ...` (warning) | `types` asked for a type some cells do not fit | `xlsx_problems(df)`; choose `"text"` and convert yourself |
 | `N cells hold Excel errors` (warning) | formulas in the workbook gave errors | `xlsx_problems(df)`; `"text"` keeps the error text |
+| `N cells hold NaN or Inf` (warning) | `write_xlsx()` wrote numbers Excel cannot store as blank cells | replace them with numbers or `NA` first |
 | `... already exists` | `write_xlsx()` would replace a file | `replace = TRUE`, or `write_sheet()` / `write_cells()` to keep the rest |
 | `Sheet name ... which Excel does not allow` | a sheet name breaks Excel's rules | use the suggested name |
 | `formats names ..., which is not a column` | a name in `formats`, `widths` or `styles` is not in the table | fix the name; the message suggests one |
@@ -883,10 +885,14 @@ Writes a new workbook and returns `path` invisibly.
   one sheet, titled by their names).
 - `sheet`: the sheet name when `x` is one data frame.
 - `header`: `"names"`, `"labels"`, `"both"`, or `FALSE` for no header row.
+  With `"both"`, the labels row is blank where a column has no label.
 - `values`: `"labels"` or `"codes"`, for labelled columns.
 - `formats`, `widths`, `freeze`, `filter`, `header_style`, `styles`: see
   [Format the output](#format-the-output). They apply to every sheet.
-- `merge`: ranges to merge, such as `"A1:F1"`, on every sheet written.
+- `merge`: ranges to merge, such as `"A1:F1"`, on every sheet written;
+  or a list of styles named by range,
+  `list("A1:F1" = xl_style(align = "center"))`. Excel keeps only a
+  merged range's top-left value, so the other cells must be empty.
 - `gap`: blank rows between tables on one sheet.
 - `na`: text to write for `NA`; `""` leaves the cell empty.
 - `replace`: `TRUE` replaces `path` if it exists; `FALSE` stops instead.

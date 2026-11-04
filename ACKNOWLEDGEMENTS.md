@@ -128,7 +128,7 @@ Copyright holders are given as they appear in each project's LICENSE file at the
 
 ## Dependencies
 
-calamine is compiled into xlkit, with the crates it depends on, all pinned in `src/rust/Cargo.lock`: quick-xml, zip, flate2, zlib-rs, zopfli, encoding_rs, codepage, atoi_simd, fast-float2, serde, log, memchr, byteorder, crc32fast, simd-adler32, hashbrown, indexmap, bumpalo and typed-path. Their licenses are MIT, Apache-2.0, Zlib, BSD-3-Clause (part of encoding_rs) or Unlicense, or a choice among them, all compatible with GPL-3.0. rust_xlsxwriter is planned for writing.
+calamine and rust_xlsxwriter are compiled into xlkit, with the crates they depend on, all pinned in `src/rust/Cargo.lock`: quick-xml, zip, flate2, zlib-rs, zopfli, encoding_rs, codepage, atoi_simd, fast-float2, serde, log, memchr, byteorder, crc32fast, simd-adler32, hashbrown, indexmap, bumpalo and typed-path. rust_xlsxwriter adds no crates of its own beyond zip, which it shares with calamine. Their licenses are MIT, Apache-2.0, Zlib, BSD-3-Clause (part of encoding_rs) or Unlicense, or a choice among them, all compatible with GPL-3.0.
 
 ### calamine
 
@@ -141,5 +141,5 @@ calamine is compiled into xlkit, with the crates it depends on, all pinned in `s
 
 - Copyright holder: John McNamara (`LICENSE_MIT`: "Copyright 2022-2026 John McNamara <jmcnamara@cpan.org>")
 - License: MIT OR Apache-2.0 (xlkit can use it under MIT)
-- URL: https://github.com/jmcnamara/rust_xlsxwriter (version 0.102.0 studied)
-- Role: writes new xlsx files with formats, column widths, autofit, freeze panes, autofilters, merged cells and Excel tables. It cannot modify an existing file, so xlkit needs a separate approach for `putexcel` and for replacing one sheet.
+- URL: https://github.com/jmcnamara/rust_xlsxwriter (version 0.102.0)
+- Role: writes the new workbooks of `write_xlsx()`, in `src/rust/src/write.rs`: numbers, text, booleans, formulas and blank cells, formats (number formats, fonts, fills, borders, alignment), column widths, frozen panes, autofilters and merged ranges. xlkit decides every cell, format and width in R and computes its own column widths, so rust_xlsxwriter's autofit is not used. It cannot modify an existing file, so xlkit needs a separate approach for `putexcel` and for replacing one sheet. Version 0.102.0, pinned.

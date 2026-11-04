@@ -45,6 +45,12 @@ jobs:
       # fetch the pinned crates first.
       - run: cargo fetch --locked
         working-directory: src/rust
+      # The writing tests check formats, fonts, widths, frozen panes,
+      # filters and merged ranges with openpyxl, and skip without it.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install openpyxl==3.1.5
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
@@ -58,10 +64,13 @@ jobs:
           error-on: '"warning"'
           upload-snapshots: true
 
-  # The examples in docs/r.md's reading sections, run against the
-  # installed package; their output must match the docs.
+  # The examples in docs/r.md and README.md, run against the installed
+  # package; their output must match the docs. The labels examples read
+  # and write .dta files with dtaparser, which is on no registry.
   docs:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -69,5 +78,8 @@ jobs:
         with:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::remotes
+      - run: Rscript -e 'remotes::install_github("jbearak/dta-parser", subdir = "r/dtaparser", upgrade = "never")'
       - run: R CMD INSTALL .
       - run: Rscript tools/check-docs.R

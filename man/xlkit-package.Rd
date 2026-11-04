@@ -6,7 +6,7 @@
 \alias{xlkit-package}
 \title{xlkit: Read and Write Excel Workbooks, Naming Cells as Excel Shows Them}
 \description{
-Reads .xlsx workbooks into tibbles, naming sheets, ranges and header rows as Excel shows them. Each column's type comes from every cell in it; cells that do not fit and Excel errors are reported with their cell references. Dates follow each cell's number format and the workbook's date system. Reading is done in Rust by the calamine crate.
+Reads .xlsx workbooks into tibbles, naming sheets, ranges and header rows as Excel shows them. Each column's type comes from every cell in it; cells that do not fit and Excel errors are reported with their cell references. Dates follow each cell's number format and the workbook's date system. Writes data frames to new workbooks, one sheet each or several tables on one sheet, with a bold header that stays in view, fitted column widths, number formats, styles and Stata's variable and value labels, and never replaces a file unless told to. Reading is done in Rust by the calamine crate and writing by the rust_xlsxwriter crate.
 }
 \seealso{
 Useful links:
