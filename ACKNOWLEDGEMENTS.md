@@ -2,7 +2,7 @@
 
 Last updated 2026-11-04.
 
-xlkit's design draws on the projects below. At this stage xlkit has copied no code from any of them. The entries record design ideas, which `docs/prior-art.md` describes in detail with citations. If code is ever copied or adapted, the entry will say which files, and the project's license notice will be kept with that code.
+xlkit's design draws on the projects below. The entries record design ideas, which `docs/prior-art.md` describes in detail with citations. Code xlkit has adapted is listed under [Code adapted](#code-adapted), with the files it went into; each of those files says so in a comment.
 
 Copyright holders are given as they appear in each project's LICENSE file at the version studied.
 
@@ -112,16 +112,30 @@ Copyright holders are given as they appear in each project's LICENSE file at the
 - xlkit studied these commands only from general knowledge of how they behave. No Stata manuals, help files, website pages or code were read or used.
 - Learned: the behavior xlkit aims to reproduce in R, one line per command.
 
-## Planned dependencies
+## Code adapted
 
-These crates are expected to be compiled into xlkit. Their license notices will ship with xlkit's source and binaries.
+### Table Viewer
+
+- Copyright holder: Jonathan Bearak
+- License: GPL-3.0
+- URL: https://github.com/jbearak/table-viewer
+- Adapted: the number-format section splitter, `format_sections()` in `src/spreadsheet-format.ts` (how quotes, `\` escapes, the `_` and `*` padding characters and brackets hide a `;`), in `src/rust/src/format.rs`'s `first_section()`. xlkit's date, time and duration classifier around it is its own.
+
+### Howard Hinnant's date algorithms
+
+- Source: "chrono-Compatible Low-Level Date Algorithms", https://howardhinnant.github.io/date_algorithms.html (the author places the algorithms in the public domain)
+- Adapted: `days_from_civil()`, in `src/rust/src/read.rs`, to turn ISO 8601 dates stored in cells into Excel serial numbers.
+
+## Dependencies
+
+calamine is compiled into xlkit, with the crates it depends on, all pinned in `src/rust/Cargo.lock`: quick-xml, zip, flate2, zlib-rs, zopfli, encoding_rs, codepage, atoi_simd, fast-float2, serde, log, memchr, byteorder, crc32fast, simd-adler32, hashbrown, indexmap, bumpalo and typed-path. Their licenses are MIT, Apache-2.0, Zlib, BSD-3-Clause (part of encoding_rs) or Unlicense, or a choice among them, all compatible with GPL-3.0. rust_xlsxwriter is planned for writing.
 
 ### calamine
 
 - Copyright holder: Johann Tuffe (`LICENSE-MIT.md`: "Copyright (c) 2016 Johann Tuffe")
 - License: MIT
 - URL: https://github.com/tafia/calamine (version 0.38.0 studied)
-- Role: reads xlsx files. Cell values, Excel error codes, date detection from number formats, the 1904 flag, named tables, merged regions and (since 0.38.0) cell styles. Read-only.
+- Role: reads xlsx files for `read_xlsx()`: cell values, Excel error codes, each cell's number format (from its cell styles), the 1904 flag, Excel tables, defined names, merged regions and sheet types. Read-only. Version 0.38.0, pinned.
 
 ### rust_xlsxwriter
 

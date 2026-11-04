@@ -1,0 +1,12 @@
+^\.github$
+(^|/)\.claude$
+^docs$
+^tools$
+^AGENTS\.md$
+^CONTEXT\.md$
+^ACKNOWLEDGEMENTS\.md$
+^LICENSE$
+^README\.md$
+^src/rust/target$
+^.*\.Rproj$
+^\.Rproj\.user$

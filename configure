@@ -1,0 +1,8 @@
+#!/bin/sh
+# Stop early, with what to do, when Rust's cargo cannot be found.
+# src/Makevars also looks in ~/.cargo/bin, where rustup puts it.
+if command -v cargo >/dev/null 2>&1 || [ -x "$HOME/.cargo/bin/cargo" ]; then
+  exit 0
+fi
+echo "xlkit: building needs cargo; see https://rustup.rs" >&2
+exit 1

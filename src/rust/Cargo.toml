@@ -1,0 +1,21 @@
+[package]
+name = "xlkit"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/lib.rs"
+
+[dependencies]
+# Pinned exactly; Cargo.lock pins its dependencies.
+calamine = "=0.38.0"
+
+[workspace]
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "unwind"

@@ -1,0 +1,24 @@
+# R on Windows links with Rtools' gcc, so build the Rust library for the
+# GNU target rather than rustup's default MSVC one. The system libraries
+# are those Rust's standard library needs on Windows. The versions are
+# printed for the install log, and the build folder is removed once the
+# library is linked.
+TARGET = x86_64-pc-windows-gnu
+LIBDIR = rust/target/$(TARGET)/release
+PKG_LIBS = -L$(LIBDIR) -lxlkit -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
+
+all: $(SHLIB) rust_clean
+
+$(SHLIB): rustlib
+
+rustlib:
+	PATH="$(PATH):$(USERPROFILE)/.cargo/bin" && rustc --version && cargo --version && \
+	  cd rust && cargo build --release --locked --lib --target $(TARGET) --target-dir target
+
+rust_clean: $(SHLIB)
+	rm -rf rust/target
+
+.PHONY: rustlib rust_clean
+
+clean:
+	rm -rf $(SHLIB) $(OBJECTS) rust/target

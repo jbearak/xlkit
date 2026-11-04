@@ -1,0 +1,22 @@
+# Build the Rust core (src/rust) as a static library and link it in.
+# rustup installs cargo in ~/.cargo/bin, which R started from a desktop
+# app may not have on its PATH. The versions are printed for the install
+# log, and the build folder is removed once the library is linked.
+LIBDIR = rust/target/release
+PKG_LIBS = -L$(LIBDIR) -lxlkit
+
+all: $(SHLIB) rust_clean
+
+$(SHLIB): rustlib
+
+rustlib:
+	PATH="$(PATH):$(HOME)/.cargo/bin" && rustc --version && cargo --version && \
+	  cd rust && cargo build --release --locked --lib --target-dir target
+
+rust_clean: $(SHLIB)
+	rm -rf rust/target
+
+.PHONY: rustlib rust_clean
+
+clean:
+	rm -rf $(SHLIB) $(OBJECTS) rust/target
