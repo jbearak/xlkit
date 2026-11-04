@@ -273,14 +273,16 @@ percent_message <- function(what, v, format, verb = "has") {
 # Percent messages for the number cells of `blocks` (columns of cells:
 # row, col, kind, num, fmt, and `plain` for numbers that are not dates,
 # times or codes), judged by the number format each cell ends up with,
-# `format_of(fmt)`. A column of a table (`column`) whose number cells all
-# have one percent format is named; other cells are named by reference.
+# `format_of(fmt)`, one column of cells at a time. A column of a table
+# (`column`) whose number cells all have one percent format is named;
+# other cells are named by reference.
 # `first` is the row and column offset of the blocks (1 when counted
 # from 0). A cell with no format of its own keeps whatever it had, which
 # is not judged.
 percent_messages <- function(blocks, format_of, first = 0, label = identity) {
   groups <- list()
-  for (blk in blocks) {
+  for (b in seq_along(blocks)) {
+    blk <- blocks[[b]]
     if (!isTRUE(blk$plain)) next
     num <- which(blk$kind == W_NUMBER)
     fmts <- vapply(blk$fmt[num], function(id) {
@@ -290,7 +292,9 @@ percent_messages <- function(blocks, format_of, first = 0, label = identity) {
     for (f in unique(fmts[!is.na(fmts)])) {
       hit <- num[!is.na(fmts) & fmts == f]
       whole <- !is.null(blk$column) && length(hit) == length(num)
-      key <- if (whole) paste0("column:", length(groups)) else paste0("cells:", f)
+      # Each column of cells is judged on its own, so fractions in one
+      # column do not hide numbers written as percents in another.
+      key <- if (whole) paste0("column:", length(groups)) else paste0("cells:", b, ":", f)
       g <- groups[[key]]
       if (is.null(g)) g <- list(format = f, column = if (whole) blk$column, rows = numeric(), cols = numeric(), v = numeric())
       g$rows <- c(g$rows, blk$row + hit - 1 + first)

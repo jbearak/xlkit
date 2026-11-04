@@ -290,3 +290,12 @@ test_that("xl_style() keeps only what is set, and prints it", {
   expect_identical(format(xl_style()), "<xl_style> (keeps the cell's style)")
   expect_output(print(s), "<xl_style> bold", fixed = TRUE)
 })
+
+test_that("fractions in one column do not hide a percent mistake in another", {
+  path <- temp_copy(xlkit_example("template.xlsx"))
+  expect_message(
+    write_cells(path, "Cover", H1 = c(25, 40), I1 = c(0.25, 0.4),
+                styles = list("H1:H2" = xl_style(format = "0%"), "I1:I2" = xl_style(format = "0%"))),
+    "H1 and H2 have values such as 25"
+  )
+})
