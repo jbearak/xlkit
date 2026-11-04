@@ -10,8 +10,10 @@ lengths (doubles, integers, and strings as `const char *` from
 
 Because Rust never calls R's API, an R error can never jump over a
 Rust frame, and Rust never needs `PROTECT`. Rust reports failures as a
-status code and a UTF-8 message, and the C side raises the R error after
-Rust has returned and freed what it held.
+status code and a UTF-8 message. C returns them to R, which raises the
+error with rlang, after Rust has returned and freed what it held. If R
+fails while C copies a result (out of memory), an external pointer's
+finalizer frees the Rust buffers.
 
 ## Considered options
 
