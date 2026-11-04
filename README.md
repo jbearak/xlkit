@@ -38,10 +38,13 @@ xlkit line for each `import excel`, `export excel` and `putexcel` line.
 
 Two judges, Claude Sonnet and GPT Terra, compared xlkit's design and
 documentation with those of readxl and writexl, openxlsx2, pandas,
-openpyxl, polars, XLSX.jl, SheetJS, ExcelJS and Stata's Excel commands,
-blind to which library was which, on 13 fixed tasks. Both scored
-xlkit higher against every one of them. The rubric, the prompts and
-every response are in [docs/judging](docs/judging/round-3/README.md).
+openpyxl, polars, XLSX.jl, SheetJS and ExcelJS on 13 fixed tasks,
+blind to which library was which, and both scored xlkit higher on
+design and on documentation against every one of them. Against Stata's
+`import excel`, `export excel` and `putexcel`, which the judges scored
+from their own knowledge, without blinding and on design only, both
+scored xlkit's design higher. The rubric, the prompts and every
+response are in [docs/judging](docs/judging/round-3/README.md).
 
 ## Install
 

@@ -85,7 +85,7 @@ write_cells <- function(path, sheet, ..., styles = NULL, merge = NULL) {
   merges <- check_merge(merge, call)
 
   p <- new_cell_plan(sh$name)
-  if (!is.null(sh$note)) p$messages <- list(sh$note)
+  p$added <- sh$note
   for (k in seq_along(values)) {
     cl <- parse_cells(nm[[k]])
     if (is.null(cl) || cl[[1]] != cl[[3]] || cl[[2]] != cl[[4]]) {

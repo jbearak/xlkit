@@ -82,7 +82,7 @@ check_edit_sheet <- function(sheet, info, path, call) {
   }
   check_sheet_names(c(sheet), call)
   # A new sheet in an existing workbook is often a misspelled name; the
-  # note is shown just before writing, once every check has passed.
+  # note is shown once the workbook has been written (run_edit()).
   note <- NULL
   if (length(names)) {
     note <- paste0(basename(path), " has no sheet ", dquote(sheet), ", so it is added.")
@@ -366,6 +366,8 @@ run_edit <- function(p, parts, path, full, call, src = full) {
   res <- .Call(C_xl_edit, enc2utf8(src), enc2utf8(tmp), parts)
   if (!is.null(res$status)) edit_failed(res, path, p$sheet, call)
   move_over(tmp, full, path, call)
+  # Said only once the sheet is really there.
+  if (!is.null(p$added)) rlang::inform(p$added)
   s <- res$strings
   for (k in seq_len(length(s) %/% 3)) {
     chart <- s[[3 * k - 2]]

@@ -38,8 +38,11 @@
 Round passes.
 
 Both judges score the implemented package's design and docs above
-every other library's, in every group, with every common task at 2.5
-or more for design and for docs. This is the pass the README states.
+those of every other library in the R, Python, Julia and TypeScript
+groups, and its design above Stata's commands, which they scored from
+their own knowledge, unblinded and on design only (rubric.md, "Stata").
+Every common task is at 2.5 or more for design and for docs. This is
+the pass the README states.
 
 ## Fresh-agent check
 
