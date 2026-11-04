@@ -6,18 +6,24 @@ Description: Reads .xlsx workbooks into tibbles, naming sheets, ranges
     and header rows as Excel shows them. Each column's type comes from
     every cell in it; cells that do not fit and Excel errors are reported
     with their cell references. Dates follow each cell's number format
-    and the workbook's date system. Reading is done in Rust by the
-    calamine crate.
+    and the workbook's date system. Writes data frames to new workbooks,
+    one sheet each or several tables on one sheet, with a bold header
+    that stays in view, fitted column widths, number formats, styles and
+    Stata's variable and value labels, and never replaces a file unless
+    told to. Reading is done in Rust by the calamine crate and writing by
+    the rust_xlsxwriter crate.
 License: GPL-3
 URL: https://github.com/jbearak/xlkit
 BugReports: https://github.com/jbearak/xlkit/issues
 Depends: R (>= 4.2)
 Imports:
+    grDevices,
     hms,
     rlang,
     tibble,
     vctrs
 Suggests:
+    haven,
     readxl,
     testthat (>= 3.0.0)
 SystemRequirements: Cargo (Rust's package manager), rustc

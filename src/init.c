@@ -6,6 +6,10 @@
  * finalizer frees it, so an allocation error part way leaks nothing.
  * A failure comes back to R as list(status, message), and R raises the
  * error once Rust's memory is freed.
+ *
+ * To write, C_xl_write() points an XlPlan at R's vectors (strings
+ * translated to UTF-8 into memory R frees when the call ends) and Rust
+ * only reads them while xl_write() runs.
  */
 #include <R.h>
 #include <Rinternals.h>
@@ -30,9 +34,32 @@ typedef struct {
   size_t n_strings;
 } XlResult;
 
+typedef struct { const int32_t *ptr; size_t n; } XlInts;
+typedef struct { const double *ptr; size_t n; } XlDoubles;
+typedef struct { const char *const *ptr; size_t n; } XlStrings;
+
+/* The same fields, in the same order, as XlPlan in src/rust/src/lib.rs. */
+typedef struct {
+  XlInts fmt_ints;
+  XlDoubles fmt_size;
+  XlStrings fmt_font;
+  XlStrings fmt_numfmt;
+  XlStrings sheet_names;
+  XlInts sheet_ints;
+  XlInts width_cols;
+  XlDoubles width_vals;
+  XlInts merges;
+  XlInts blocks;
+  XlInts kinds;
+  XlInts fmts;
+  XlDoubles nums;
+  XlStrings strs;
+} XlPlan;
+
 XlResult xl_info(const char *path);
 XlResult xl_names(const char *path);
 XlResult xl_read(const char *path, const char *sheet);
+XlResult xl_write(const char *path, const XlPlan *plan);
 void xl_result_free(XlResult *r);
 
 static void finalize(SEXP ptr) {
@@ -151,10 +178,73 @@ static SEXP C_xl_read(SEXP path, SEXP sheet) {
   return out;
 }
 
+/* The parts of the plan R made (R/write_xlsx.R, `plan_parts`), in order. */
+enum {
+  P_FMT_INTS, P_FMT_SIZE, P_FMT_FONT, P_FMT_NUMFMT, P_SHEET_NAMES, P_SHEET_INTS,
+  P_WIDTH_COLS, P_WIDTH_VALS, P_MERGES, P_BLOCKS, P_KINDS, P_FMTS, P_NUMS, P_STRS,
+  P_N
+};
+
+static XlInts ints_of(SEXP plan, int i) {
+  SEXP x = VECTOR_ELT(plan, i);
+  if (TYPEOF(x) != INTSXP) Rf_error("xlkit: part %d of the plan must be integer", i + 1);
+  XlInts out = {INTEGER(x), (size_t) XLENGTH(x)};
+  return out;
+}
+
+static XlDoubles doubles_of(SEXP plan, int i) {
+  SEXP x = VECTOR_ELT(plan, i);
+  if (TYPEOF(x) != REALSXP) Rf_error("xlkit: part %d of the plan must be double", i + 1);
+  XlDoubles out = {REAL(x), (size_t) XLENGTH(x)};
+  return out;
+}
+
+/* UTF-8 copies of a character vector, NULL for NA, in memory R frees
+ * when the .Call returns. */
+static XlStrings strings_of(SEXP plan, int i) {
+  SEXP x = VECTOR_ELT(plan, i);
+  if (TYPEOF(x) != STRSXP) Rf_error("xlkit: part %d of the plan must be character", i + 1);
+  R_xlen_t n = XLENGTH(x);
+  const char **p = n ? (const char **) R_alloc((size_t) n, sizeof(char *)) : NULL;
+  for (R_xlen_t k = 0; k < n; k++) {
+    SEXP s = STRING_ELT(x, k);
+    p[k] = s == NA_STRING ? NULL : Rf_translateCharUTF8(s);
+  }
+  XlStrings out = {p, (size_t) n};
+  return out;
+}
+
+static SEXP C_xl_write(SEXP path, SEXP plan) {
+  const char *p = utf8(path, "path");
+  if (TYPEOF(plan) != VECSXP || XLENGTH(plan) != P_N) Rf_error("xlkit: the plan must be a list of %d parts", P_N);
+  XlPlan w;
+  w.fmt_ints = ints_of(plan, P_FMT_INTS);
+  w.fmt_size = doubles_of(plan, P_FMT_SIZE);
+  w.fmt_font = strings_of(plan, P_FMT_FONT);
+  w.fmt_numfmt = strings_of(plan, P_FMT_NUMFMT);
+  w.sheet_names = strings_of(plan, P_SHEET_NAMES);
+  w.sheet_ints = ints_of(plan, P_SHEET_INTS);
+  w.width_cols = ints_of(plan, P_WIDTH_COLS);
+  w.width_vals = doubles_of(plan, P_WIDTH_VALS);
+  w.merges = ints_of(plan, P_MERGES);
+  w.blocks = ints_of(plan, P_BLOCKS);
+  w.kinds = ints_of(plan, P_KINDS);
+  w.fmts = ints_of(plan, P_FMTS);
+  w.nums = doubles_of(plan, P_NUMS);
+  w.strs = strings_of(plan, P_STRS);
+  XlResult *slot;
+  SEXP ptr = PROTECT(new_owner(&slot));
+  own(ptr, slot, xl_write(p, &w));
+  SEXP out = to_r(ptr);
+  UNPROTECT(1);
+  return out;
+}
+
 static const R_CallMethodDef calls[] = {
   {"C_xl_info", (DL_FUNC) &C_xl_info, 1},
   {"C_xl_names", (DL_FUNC) &C_xl_names, 1},
   {"C_xl_read", (DL_FUNC) &C_xl_read, 2},
+  {"C_xl_write", (DL_FUNC) &C_xl_write, 2},
   {NULL, NULL, 0}
 };
 
