@@ -37,7 +37,7 @@ make_col_names <- function(text, letters, rule) {
     }
     out[is.na(out)] <- ""
     u <- uniquify(out, letters)
-    return(list(names = finish_unique(u$names, letters, identity)$names, repairs = u$repairs))
+    return(merge_repairs(u, finish_unique(u$names, letters, identity)))
   }
   u <- uniquify(text, letters)
   case <- function(x) {
@@ -58,7 +58,12 @@ make_col_names <- function(text, letters, rule) {
   # The names before Stata's cut, to tell a repeat the cut made.
   uncut <- if ("stata" %in% rule) stata_name(case(u$names), cut = FALSE) else out
   uncut[empty] <- out[empty]
-  f <- finish_unique(out, letters, convert, base = u$names, limit = limit, uncut = uncut)
+  merge_repairs(u, finish_unique(out, letters, convert, base = u$names, limit = limit, uncut = uncut))
+}
+
+# The final names, with uniquify()'s repairs and those finish_unique()
+# made to columns uniquify() left alone.
+merge_repairs <- function(u, f) {
   more <- f$repairs[!f$repairs$index %in% u$repairs$index, , drop = FALSE]
   repairs <- rbind(u$repairs, more)
   list(names = f$names, repairs = repairs[order(repairs$index), , drop = FALSE])
@@ -88,8 +93,10 @@ uniquify <- function(text, letters) {
 # Make names unique that a rule made equal: the later one gets "_" and
 # its letter, then a number if that is not enough. Under a length limit
 # (Stata's 32), the stem is cut to keep the suffix. Returns list(names,
-# repairs), with why "cut" when the names differed before the cut.
+# repairs), with why "cut" when the cut itself made the names equal: they
+# were equal as the rule gave them and differed before the cut.
 finish_unique <- function(out, letters, convert, base = out, limit = Inf, uncut = out) {
+  given <- out
   index <- integer()
   why <- character()
   of <- integer()
@@ -98,7 +105,8 @@ finish_unique <- function(out, letters, convert, base = out, limit = Inf, uncut 
     earlier <- match(out[i], out[seq_len(i - 1)])
     if (!is.na(earlier)) {
       index <- c(index, i)
-      why <- c(why, if (uncut[i] != uncut[earlier]) "cut" else "rule")
+      cut <- given[i] == given[earlier] && uncut[i] != uncut[earlier]
+      why <- c(why, if (cut) "cut" else "rule")
       of <- c(of, earlier)
     }
     while (out[i] %in% out[seq_len(i - 1)]) {

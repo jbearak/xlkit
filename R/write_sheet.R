@@ -141,7 +141,7 @@ write_sheet <- function(x, path, sheet, at = NULL, after = NULL, header = "names
   add_table(p, x, at_cell[[1]], at_cell[[2]], args$header, args$values, args$na, formats, styles, NULL,
             TRUE, "`x`", call)
   apply_edit_styles(p, styles$ranges)
-  p$messages <- c(p$messages, percent_range_messages(p$blocks, styles$ranges))
+  p$messages <- c(p$messages, percent_messages(p$blocks, function(id) format_style(p$reg, id)$format))
   parts <- edit_parts(p, 0L, after)
   src <- where$full
   if (!where$exists) {

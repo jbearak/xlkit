@@ -102,6 +102,21 @@ test_that("\"stata\" names that its rule or 32-character cut makes repeat are in
   expect_match(conditionMessage(msg), "G1 \"total\" is `total_g` (it would repeat D1 after the rule)", fixed = TRUE)
 })
 
+test_that("a repeat of a repaired name is not said to come from the 32-character cut", {
+  for (rule in list("snake", c("stata", "lower"))) {
+    out <- xlkit:::make_col_names(c("a b", "a_b", "a_b_b"), c("A", "B", "C"), rule)
+    expect_identical(out$repairs$why, c("rule", "rule"), label = paste(rule, collapse = "+"))
+  }
+})
+
+test_that("a function rule's names made unique after its repeats are in the message", {
+  out <- xlkit:::make_col_names(c("w", "x", "y", "z"), c("A", "B", "C", "D"),
+                                function(x) c("a", "a_C", "a", "a_C_C"))
+  expect_identical(out$names, c("a", "a_C", "a_C_C", "a_C_C_D"))
+  expect_identical(out$repairs$index, c(3L, 4L))
+  expect_identical(out$repairs$why, c("repeat", "rule"))
+})
+
 test_that("a name that differs from its header keeps the header as its label", {
   df <- suppressMessages(read_xlsx(messy(), sheet = "Headers", names = "snake"))
   expect_identical(attr(df$share_percent, "label"), "Share %")

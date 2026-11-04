@@ -246,7 +246,7 @@ first_format_section <- function(format) {
 
 # A number format with an unquoted "%", which shows a number times 100.
 is_percent_format <- function(format) {
-  rlang::is_string(format) && grepl("%", gsub('"[^"]*"|\\\\.|\\[[^]]*\\]', "", format), fixed = TRUE)
+  rlang::is_string(format) && grepl("%", gsub('"[^"]*"|\\\\.|\\[[^]]*\\]|_.|\\*.', "", format), fixed = TRUE)
 }
 
 # The message for numbers that look already multiplied by 100 (every
@@ -270,29 +270,41 @@ percent_message <- function(what, v, format, verb = "has") {
   )
 }
 
-# Percent messages for the numbers written into each range in `ranges`
-# whose style has a percent format, naming the cells.
-percent_range_messages <- function(blocks, ranges) {
-  out <- list()
-  for (rs in ranges) {
-    if (!is_percent_format(rs$style$format)) next
-    cl <- rs$cells
-    rows <- numeric()
-    cols <- numeric()
-    v <- numeric()
-    for (blk in blocks) {
-      if (blk$col < cl[[2]] || blk$col > cl[[4]]) next
-      r <- blk$row + seq_along(blk$kind) - 1
-      hit <- r >= cl[[1]] & r <= cl[[3]] & blk$kind == W_NUMBER & blk$dclass == 0L
-      rows <- c(rows, r[hit])
-      cols <- c(cols, rep(blk$col, sum(hit)))
-      v <- c(v, blk$num[hit])
+# Percent messages for the number cells of `blocks` (columns of cells:
+# row, col, kind, num, fmt, and `plain` for numbers that are not dates,
+# times or codes), judged by the number format each cell ends up with,
+# `format_of(fmt)`. A column of a table (`column`) whose number cells all
+# have one percent format is named; other cells are named by reference.
+# `first` is the row and column offset of the blocks (1 when counted
+# from 0). A cell with no format of its own keeps whatever it had, which
+# is not judged.
+percent_messages <- function(blocks, format_of, first = 0, label = identity) {
+  groups <- list()
+  for (blk in blocks) {
+    if (!isTRUE(blk$plain)) next
+    num <- which(blk$kind == W_NUMBER)
+    fmts <- vapply(blk$fmt[num], function(id) {
+      f <- format_of(id)
+      if (is_percent_format(f)) f else NA_character_
+    }, character(1))
+    for (f in unique(fmts[!is.na(fmts)])) {
+      hit <- num[!is.na(fmts) & fmts == f]
+      whole <- !is.null(blk$column) && length(hit) == length(num)
+      key <- if (whole) paste0("column:", length(groups)) else paste0("cells:", f)
+      g <- groups[[key]]
+      if (is.null(g)) g <- list(format = f, column = if (whole) blk$column, rows = numeric(), cols = numeric(), v = numeric())
+      g$rows <- c(g$rows, blk$row + hit - 1 + first)
+      g$cols <- c(g$cols, rep(blk$col + first, length(hit)))
+      g$v <- c(g$v, blk$num[hit])
+      groups[[key]] <- g
     }
-    if (!length(v)) next
-    o <- order(rows, cols)
-    cells <- cell_ref(rows[o], cols[o])
-    m <- percent_message(and_list_first(cells), v[o], rs$style$format,
-                         verb = if (length(cells) == 1) "has" else "have")
+  }
+  out <- list()
+  for (g in groups) {
+    o <- order(g$rows, g$cols)
+    what <- if (!is.null(g$column)) paste0("`", g$column, "`") else and_list_first(cell_ref(g$rows[o], g$cols[o]))
+    verb <- if (is.null(g$column) && length(o) > 1) "have" else "has"
+    m <- percent_message(label(what), g$v[o], g$format, verb = verb)
     if (!is.null(m)) out[[length(out) + 1]] <- m
   }
   out

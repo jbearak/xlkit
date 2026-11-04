@@ -684,9 +684,13 @@ write_xlsx(data.frame(share = c(25.6, 40.2)), "shares.xlsx", formats = c(share =
 #> ℹ A percent format multiplies by 100. To show 25.6%, divide by 100 first.
 ```
 
-The file is written as asked. The same message comes for a format in
-`styles`, and from `write_sheet()` and `write_cells()`, where it names
-the cells.
+The file is written as asked. xlkit judges each number by the format
+its cell ends up with, after `formats` and every style in `styles` and
+`merge`, so a later format without `%` clears it. The message names the
+column when all its numbers get the format, and the cells otherwise.
+`write_sheet()` and `write_cells()` say it too. A cell they write
+without a format of its own keeps the one it had in the workbook, which
+xlkit does not judge.
 
 Dates take formats such as `"yyyy-mm-dd"`, `"d mmm yyyy"` and
 `"mm/dd/yyyy hh:mm"`.

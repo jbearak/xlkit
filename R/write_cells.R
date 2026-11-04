@@ -117,9 +117,8 @@ write_cells <- function(path, sheet, ..., styles = NULL, merge = NULL) {
       p$pieces <- c(p$pieces, r - 1L, c - 1L, length(v), 1L, 0L)
     }
   }
-  styled <- c(ranges, Filter(function(m) !is.null(m$style), merges))
-  apply_edit_styles(p, styled)
-  p$messages <- c(p$messages, percent_range_messages(p$blocks, styled))
+  apply_edit_styles(p, c(ranges, Filter(function(m) !is.null(m$style), merges)))
+  p$messages <- c(p$messages, percent_messages(p$blocks, function(id) format_style(p$reg, id)$format))
   parts <- edit_parts(p, 0L, merges = merges)
   src <- where$full
   if (!where$exists) {

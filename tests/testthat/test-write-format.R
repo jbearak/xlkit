@@ -61,6 +61,34 @@ test_that("a percent format on numbers that look already multiplied by 100 gets 
   expect_no_message(write_cells(path, sheet = "Sheet1", J2 = 0.125, styles = list(J2 = xl_style(format = "0.0%"))))
 })
 
+test_that("a percent format given by range gets the message in write_xlsx() and write_sheet()", {
+  path <- temp_xlsx()
+  scaled <- data.frame(share = c(25, 40))
+  by_range <- list("A2:A3" = xl_style(format = "0%"))
+  expect_message(write_xlsx(scaled, path, styles = by_range),
+                 "`share` has values such as 25 and the format \"0%\", which shows them as 2500%.", fixed = TRUE)
+  expect_message(write_sheet(scaled, path, sheet = "Sheet1", styles = by_range),
+                 "`share` has values such as 25", fixed = TRUE)
+  expect_message(write_xlsx(data.frame(share = c(25, 40, 50)), path, styles = by_range, replace = TRUE),
+                 "A2 and A3 have values such as 25", fixed = TRUE)
+})
+
+test_that("the percent message judges each cell's final format, so a later format without % clears it", {
+  path <- temp_xlsx()
+  scaled <- data.frame(share = c(25, 40))
+  expect_no_message(write_xlsx(scaled, path, formats = c(share = "0%"),
+                               styles = list("A2:A3" = xl_style(format = "0"))))
+  overlap <- list("C2:C3" = xl_style(format = "0%"), "C1:C3" = xl_style(format = "0"))
+  expect_no_message(write_cells(path, sheet = "Sheet1", C2 = c(25, 40), styles = overlap))
+  expect_no_message(write_sheet(scaled, path, sheet = "Sheet1", at = "C1", styles = overlap))
+})
+
+test_that("a % after _ or * (space or fill) is not a percent format", {
+  path <- temp_xlsx()
+  expect_no_message(write_xlsx(data.frame(share = c(25, 40)), path, formats = c(share = "0_%")))
+  expect_no_message(write_xlsx(data.frame(share = c(25, 40)), path, formats = c(share = "0*%"), replace = TRUE))
+})
+
 test_that("a name that is not a column stops, suggesting one that is", {
   path <- temp_xlsx()
   s <- sales()
