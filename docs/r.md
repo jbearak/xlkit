@@ -260,7 +260,9 @@ The rules you choose with `names` change names without a message; only
 these repairs get one.
 
 When a name differs from its header text, the text is kept as the
-column's variable label, so you can always see where a name came from:
+column's variable label, so you can see where a name came from (a
+blank header has no text to keep, and a name equal to its header needs
+no label):
 
 ```r
 df <- read_xlsx(path, sheet = "Headers", names = "snake")
@@ -783,6 +785,7 @@ xlkit does not turn text back into value labels; use
 | `... has N cells whose code has no value label` | some codes of a labelled column have no text | add labels, or `values = "codes"` |
 | `a chart plots ..., which no longer matches` | a template's chart plots a fixed range and the new table is another size | make the chart plot an Excel table (see above) |
 | `... is open in Excel` (Windows) | Excel locks open files | close it in Excel and run again |
+| `... has no sheet "X", so it is added` | `write_cells()` or `write_sheet()` named a sheet the workbook does not have | nothing, if you meant a new sheet; otherwise use the name it suggests |
 | `cannot edit this worksheet: ...` | the sheet's XML uses a form xlkit cannot splice safely | open and save the file in Excel, then try again |
 
 ## Coming from readxl, writexl or openxlsx2
@@ -848,7 +851,7 @@ read_sheets(path, sheets = NULL, ...)
 ```
 
 Reads several sheets. `sheets`: `NULL` for every worksheet (chart
-sheets are skipped unless named), a vector of names or
+sheets are skipped; naming one is an error), a vector of names or
 positions, or one regular expression matched against the names. `...`
 goes to `read_xlsx()`. Returns a named list of tibbles.
 

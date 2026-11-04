@@ -133,3 +133,19 @@ test_that("a vector's values are checked as write_xlsx() checks them", {
   })
   expect_warning(write_cells(path, "Cover", C4 = NaN), "NaN or Inf")
 })
+
+test_that("a sheet the workbook lacks is added, with a message that suggests a near name", {
+  path <- temp_copy(xlkit_example("template.xlsx"))
+  expect_message(write_cells(path, "Covr", A1 = 1), "has no sheet \"Covr\", so it is added")
+  expect_message(write_cells(path, "Cover2", A1 = 1), "Did you mean \"Cover\"")
+  expect_true("Covr" %in% xlsx_sheets(path))
+})
+
+test_that("a write that is refused does not say it added a sheet", {
+  path <- temp_copy(xlkit_example("template.xlsx"))
+  expect_no_message(
+    expect_error(write_cells(path, "Covr", A1 = 1, B1 = 2, merge = "A1:B1"), "would hide"),
+    message = "so it is added"
+  )
+  expect_false("Covr" %in% xlsx_sheets(path))
+})

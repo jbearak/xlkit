@@ -1,5 +1,8 @@
 # Plan: xlkit, from prior art to a judged release
 
+Status: done. PRs #1 to #5 are merged, and the release round in #6
+passed for both judges.
+
 ## Goal
 
 The user asked for an R package, xlkit, that complements datakit (in

@@ -269,6 +269,9 @@ def blind(text, names, title=False, patterns=()):
 def bundle(name, letter, others, names, patterns=()):
     if name == "xlkit":
         parts = [(f, read(os.path.join(REPO, f))) for f in OUR_FILES]
+        # The API reference, once the package has one (rubric.md, "Material").
+        for rd in sorted(glob.glob(os.path.join(REPO, "man", "*.Rd"))):
+            parts.append((f"man/{os.path.basename(rd)}", rd_text(rd)))
     else:
         parts = [item_text(others, it) for it in LIBRARIES[name]["items"]]
     body = "\n\n".join(f"===== {blind(title, names, title=True)} =====\n{blind(text, names, patterns=patterns)}" for title, text in parts)
