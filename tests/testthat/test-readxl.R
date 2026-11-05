@@ -26,12 +26,12 @@ test_that("report.xlsx reads as readxl reads it", {
   same_values(read_xlsx(path), rx(path))
 })
 
-test_that("every sheet of sales.xlsx reads as readxl reads it", {
-  path <- xlkit_example("sales.xlsx")
+test_that("every sheet of births.xlsx reads as readxl reads it", {
+  path <- xlkit_example("births.xlsx")
   for (sheet in c("Summary", "Regions", "Notes")) {
     same_values(read_xlsx(path, sheet = sheet), rx(path, sheet = sheet))
   }
-  for (sheet in c("Sales 2023", "Sales 2024")) {
+  for (sheet in c("Births 2023", "Births 2024")) {
     ours <- read_xlsx(path, sheet = sheet, range = "B5:F40")
     same_values(ours, rx(path, sheet = sheet, range = "B5:F40"))
     # readxl's skip counts from the first row with data, row 1 here.

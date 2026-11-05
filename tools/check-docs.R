@@ -12,14 +12,14 @@
 # - its writing sections ("Write a table" to "Fill in an existing
 #   workbook", and "Variable labels and value labels") in a folder of
 #   their own. The docs write about the reader's own data and files, so
-#   that folder holds them: `summary`, `detail`, `notes`, `means`,
-#   `counts`, `q` and `q3` (made from sales.xlsx), `new_data` (twelve
-#   months of values, as many rows as the template's Data sheet) and
+#   that folder holds them: `summary`, `detail`, `notes`, `means` and
+#   `counts` (made from births.xlsx), `new_data` (twelve months of
+#   values, as many rows as the template's Data sheet) and
 #   `model_table` (a small table of estimates), results.xlsx (a copy of
 #   template.xlsx, with sheets Cover, Chart and Data), and survey.dta
 #   (written with haven, whose `sex` is labelled Male and Female and
 #   whose `agefb` is labelled "Age at first birth");
-# - README.md's first example, in a folder holding sales.xlsx and
+# - README.md's first example, in a folder holding births.xlsx and
 #   template.xlsx, where `summary` is the Summary sheet.
 #
 # A block of output with no code, such as a message shown on its own, is
@@ -91,15 +91,14 @@ setup <- c(
 write_setup <- c(
   "invisible(suppressMessages({",
   "  dir.create('write'); setwd('write')",
-  "  .sales <- xlkit::xlkit_example('sales.xlsx')",
-  "  summary <- xlkit::read_xlsx(.sales, sheet = 'Summary')",
-  "  detail <- xlkit::read_xlsx(.sales, sheet = 'Sales 2024', range = 'B5:F40')",
-  "  notes <- xlkit::read_xlsx(.sales, sheet = 'Notes')",
-  "  means <- aggregate(cbind(units, amount) ~ region, detail, mean)",
+  "  .births <- xlkit::xlkit_example('births.xlsx')",
+  "  summary <- xlkit::read_xlsx(.births, sheet = 'Summary')",
+  "  detail <- xlkit::read_xlsx(.births, sheet = 'Births 2024', range = 'B5:F40')",
+  "  notes <- xlkit::read_xlsx(.births, sheet = 'Notes')",
+  "  means <- aggregate(asfr ~ age, detail, mean)",
   "  counts <- as.data.frame(table(region = detail$region), responseName = 'n')",
-  "  q <- detail[1:7, ]; q3 <- detail[8:14, ]",
   "  new_data <- data.frame(month = month.abb, value = c(120, 135, 128, 140, 152, 149, 160, 171, 158, 166, 175, 190))",
-  "  model_table <- data.frame(term = c('(Intercept)', 'price'), estimate = c(12.4, -0.8), std_error = c(1.1, 0.2))",
+  "  model_table <- data.frame(term = c('(Intercept)', 'age'), estimate = c(12.4, -0.8), std_error = c(1.1, 0.2))",
   "  file.copy(xlkit::xlkit_example('template.xlsx'), 'results.xlsx')",
   "  .sex <- rep(c(1, 2), length.out = 40)",
   "  haven::write_dta(data.frame(",
@@ -111,8 +110,8 @@ write_setup <- c(
 readme_setup <- c(
   "invisible(suppressMessages({",
   "  dir.create('../readme'); setwd('../readme')",
-  "  file.copy(c(xlkit::xlkit_example('sales.xlsx'), xlkit::xlkit_example('template.xlsx')), '.')",
-  "  summary <- xlkit::read_xlsx('sales.xlsx', sheet = 'Summary')",
+  "  file.copy(c(xlkit::xlkit_example('births.xlsx'), xlkit::xlkit_example('template.xlsx')), '.')",
+  "  summary <- xlkit::read_xlsx('births.xlsx', sheet = 'Summary')",
   "}))"
 )
 blocks <- lapply(blocks, function(b) {

@@ -11,15 +11,15 @@
 #' @param path An `.xlsx` or `.xlsm` file.
 #' @param sheets `NULL` for every worksheet; a vector of sheet names or
 #'   positions; or one regular expression matched against the names, such
-#'   as `"^Sales"`. A name that is not a sheet, or an expression that
+#'   as `"^Births"`. A name that is not a sheet, or an expression that
 #'   matches none, is an error.
 #' @param ... Arguments for [read_xlsx()], except `sheet`.
 #' @return A list of tibbles named by sheet, in tab order.
 #' @export
 #' @examples
-#' all <- read_sheets(xlkit_example("sales.xlsx"))
+#' all <- read_sheets(xlkit_example("births.xlsx"))
 #' names(all)
-#' read_sheets(xlkit_example("sales.xlsx"), sheets = "^Sales", header = 5)
+#' read_sheets(xlkit_example("births.xlsx"), sheets = "^Births", header = 5)
 read_sheets <- function(path, sheets = NULL, ...) {
   call <- rlang::current_env()
   args <- list(...)
@@ -27,7 +27,7 @@ read_sheets <- function(path, sheets = NULL, ...) {
   if ("sheet" %in% names(args) || "sheet" %in% names(sys.call())) {
     rlang::abort(c(
       "`read_sheets()` takes `sheets`, not `sheet`.",
-      i = "Give the sheets to read as `sheets = c(\"Sales 2023\", \"Sales 2024\")`, or a regular expression."
+      i = "Give the sheets to read as `sheets = c(\"Births 2023\", \"Births 2024\")`, or a regular expression."
     ), call = call)
   }
   args <- utils_modify(list(range = NULL, header = TRUE, names = "unique", types = NULL, na = "", dates = TRUE), args)

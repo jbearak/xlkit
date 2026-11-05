@@ -92,69 +92,78 @@ def report():
     save(wb, os.path.join(EXTDATA, "report.xlsx"))
 
 
-# --- sales.xlsx ------------------------------------------------------------
+# --- births.xlsx -----------------------------------------------------------
 
 REGIONS = ["North", "South", "East", "West", "Central"]
-PRODUCTS = ["Apples", "Pears", "Plums", "Cherries", "Grapes", "Figs", "Dates"]
-PRICES = [1.25, 1.5, 2.0, 4.75, 3.2, 5.5, 6.25]
+AGES = ["15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49"]
+# Births per 1,000 women by age of mother, and each region's level.
+ASFR = [38, 92, 118, 104, 56, 14, 2]
+LEVEL = [1.05, 1.25, 0.9, 0.85, 1.0]
 
 
-def sales_sheet(wb, year, table_name):
-    ws = wb.create_sheet(f"Sales {year}")
-    ws["B1"] = f"Sales by region, {year}"
+def births_sheet(wb, year, table_name):
+    ws = wb.create_sheet(f"Births {year}")
+    ws["B1"] = f"Births by region and age of mother, {year}"
     ws["B1"].font = Font(bold=True, size=14)
-    ws["B2"] = "Amounts in US dollars. Made-up data for xlkit's examples."
+    ws["B2"] = "asfr is births per 1,000 women. Made-up data for xlkit's examples."
     ws["B2"].font = Font(italic=True)
-    header(ws, 5, 2, ["region", "product", "units", "amount", "share"])
+    header(ws, 5, 2, ["region", "age", "women", "births", "asfr"])
     rows = []
     for r, region in enumerate(REGIONS):
-        for p, product in enumerate(PRODUCTS):
-            units = 40 + (r * 37 + p * 53 + year * 7) % 260
-            rows.append((region, product, units, round(units * PRICES[p], 2)))
-    total = sum(row[3] for row in rows)
-    for i, (region, product, units, amount) in enumerate(rows, start=6):
+        for a, age in enumerate(AGES):
+            women = round((30000 + r * 4000) * (1 - 0.05 * a) * (1 + ((r * 3 + a * 5 + year) % 9 - 4) / 100))
+            rate = ASFR[a] * LEVEL[r] * (1 - 0.02 * (year - 2023)) * (1 + ((r * 5 + a * 3 + year) % 7 - 3) / 100)
+            rows.append((region, age, women, round(women * rate / 1000)))
+    for i, (region, age, women, births) in enumerate(rows, start=6):
         ws.cell(row=i, column=2, value=region)
-        ws.cell(row=i, column=3, value=product)
-        ws.cell(row=i, column=4, value=units)
-        ws.cell(row=i, column=5, value=amount).number_format = "#,##0"
-        ws.cell(row=i, column=6, value=amount / total).number_format = "0.0%"
+        ws.cell(row=i, column=3, value=age)
+        ws.cell(row=i, column=4, value=women).number_format = "#,##0"
+        ws.cell(row=i, column=5, value=births).number_format = "#,##0"
+        ws.cell(row=i, column=6, value=births / women * 1000).number_format = "0.0"
     assert i == 40
     table = Table(displayName=table_name, ref="B5:F40")
     table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
     ws.add_table(table)
     ws.column_dimensions["B"].width = 12
-    return total, sum(row[2] for row in rows)
+    # The total fertility rate: five times the sum of the rates by age,
+    # each from all regions' births and women of that age.
+    tfr = 5 * sum(
+        sum(row[3] for row in rows if row[1] == age) / sum(row[2] for row in rows if row[1] == age)
+        for age in AGES
+    )
+    return sum(row[2] for row in rows), sum(row[3] for row in rows), tfr
 
 
-def sales():
+def births():
     wb = openpyxl.Workbook()
     summary = wb.active
     summary.title = "Summary"
-    t23, u23 = sales_sheet(wb, 2023, "Sales2023")
-    t24, u24 = sales_sheet(wb, 2024, "SalesTable")
-    header(summary, 1, 1, ["year", "units", "amount"])
-    for i, (year, units, amount) in enumerate([(2023, u23, t23), (2024, u24, t24)], start=2):
+    w23, b23, t23 = births_sheet(wb, 2023, "Births2023")
+    w24, b24, t24 = births_sheet(wb, 2024, "BirthsTable")
+    header(summary, 1, 1, ["year", "women", "births", "tfr"])
+    for i, (year, women, n, tfr) in enumerate([(2023, w23, b23, t23), (2024, w24, b24, t24)], start=2):
         summary.cell(row=i, column=1, value=year)
-        summary.cell(row=i, column=2, value=units)
-        summary.cell(row=i, column=3, value=round(amount, 2)).number_format = "#,##0.00"
+        summary.cell(row=i, column=2, value=women).number_format = "#,##0"
+        summary.cell(row=i, column=3, value=n).number_format = "#,##0"
+        summary.cell(row=i, column=4, value=round(tfr, 2)).number_format = "0.00"
 
     regions = wb.create_sheet("Regions")
-    header(regions, 1, 1, ["region", "manager", "office"])
-    for i, (region, manager, office) in enumerate(
-        zip(REGIONS, ["Ana", "Ben", "Chen", "Dee", "Eve"], ["Oslo", "Lima", "Pune", "Accra", "Kyiv"]),
+    header(regions, 1, 1, ["region", "code", "area_km2"])
+    for i, (region, code, area) in enumerate(
+        zip(REGIONS, ["N", "S", "E", "W", "C"], [48210, 61375, 39940, 72068, 21533]),
         start=2,
     ):
         regions.cell(row=i, column=1, value=region)
-        regions.cell(row=i, column=2, value=manager)
-        regions.cell(row=i, column=3, value=office)
+        regions.cell(row=i, column=2, value=code)
+        regions.cell(row=i, column=3, value=area).number_format = "#,##0"
     wb.defined_names["RegionList"] = DefinedName("RegionList", attr_text="Regions!$A$1:$C$6")
 
     notes = wb.create_sheet("Notes")
     notes["A1"] = "note"
     notes["A1"].font = Font(bold=True)
     notes["A2"] = "Every number in this workbook is made up."
-    notes["A3"] = "Sales 2023 and Sales 2024 have the same layout: a title, a note, and a table in B5:F40."
-    save(wb, os.path.join(EXTDATA, "sales.xlsx"))
+    notes["A3"] = "Births 2023 and Births 2024 have the same layout: a title, a note, and a table in B5:F40."
+    save(wb, os.path.join(EXTDATA, "births.xlsx"))
 
 
 # --- messy.xlsx ------------------------------------------------------------
@@ -619,7 +628,7 @@ def main():
     os.makedirs(EXTDATA, exist_ok=True)
     os.makedirs(FIXTURES, exist_ok=True)
     report()
-    sales()
+    births()
     messy()
     dates(False)
     dates(True)

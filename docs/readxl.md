@@ -15,10 +15,10 @@ library(xlkit)
 | readxl | xlkit |
 |---|---|
 | `read_excel(p)` or `read_xlsx(p)` | `read_xlsx(p)` |
-| `read_excel(p, sheet = "Sales 2024")` | `read_xlsx(p, sheet = "Sales 2024")` |
+| `read_excel(p, sheet = "Births 2024")` | `read_xlsx(p, sheet = "Births 2024")` |
 | `excel_sheets(p)` | `xlsx_sheets(p)` |
 | `read_excel(p, range = "B5:F40")` | `read_xlsx(p, range = "B5:F40")` |
-| `read_excel(p, range = "Sales 2024!B5:F40")` | `read_xlsx(p, sheet = "Sales 2024", range = "B5:F40")` |
+| `read_excel(p, range = "Births 2024!B5:F40")` | `read_xlsx(p, sheet = "Births 2024", range = "B5:F40")` |
 | `read_excel(p, skip = 4)` | `read_xlsx(p, header = 5)`: the header's row as Excel numbers it |
 | `read_excel(p, range = cell_cols("B:F"))` | `read_xlsx(p, range = "B:F")` |
 | `read_excel(p, range = cell_rows(5:40))` | `read_xlsx(p, range = "5:40")` |

@@ -41,7 +41,7 @@ has none), \code{"both"} for two header rows (names, then labels), or
 as text, \code{"codes"} the codes.}
 
 \item{formats}{Excel number formats by column name, such as
-\code{c(share = "0.0\%", amount = "#,##0")}. The values are unchanged;
+\code{c(births = "#,##0", asfr = "0.0")}. The values are unchanged;
 only how Excel shows them. A percent format multiplies by 100, so a
 column whose numbers are all 1 or more (or -1 or less) with one gets
 a message.}
@@ -129,11 +129,11 @@ path <- file.path(tempdir(), "scores.xlsx")
 write_xlsx(scores, path, sheet = "Scores", replace = TRUE)
 read_xlsx(path)
 
-sales <- read_xlsx(xlkit_example("sales.xlsx"), sheet = "Sales 2024", header = 5)
+births <- read_xlsx(xlkit_example("births.xlsx"), sheet = "Births 2024", header = 5)
 write_xlsx(
-  list(Sales = sales, Tables = list("Units" = sales[1:3, 1:3], "Amounts" = sales[1:3, c(1, 4)])),
-  file.path(tempdir(), "sales.xlsx"),
-  formats = c(share = "0.0\%", amount = "#,##0"),
+  list(Births = births, Tables = list("Women" = births[1:3, 1:3], "Rates" = births[1:3, c(1, 2, 5)])),
+  file.path(tempdir(), "births.xlsx"),
+  formats = c(women = "#,##0", births = "#,##0", asfr = "0.0"),
   styles = list(region = xl_style(bold = TRUE)),
   replace = TRUE
 )

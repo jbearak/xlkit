@@ -3,7 +3,7 @@
 test_that("xlkit_example() lists and finds the example workbooks", {
   expect_identical(
     xlkit_example(),
-    c("dates.xlsx", "dates1904.xlsx", "messy.xlsx", "report.xlsx", "sales.xlsx", "template.xlsx")
+    c("births.xlsx", "dates.xlsx", "dates1904.xlsx", "messy.xlsx", "report.xlsx", "template.xlsx")
   )
   expect_true(file.exists(xlkit_example("report.xlsx")))
   expect_error(xlkit_example("reprot.xlsx"), "has no example workbook \"reprot.xlsx\"")
@@ -13,8 +13,8 @@ test_that("xlkit_example() lists and finds the example workbooks", {
 test_that("the example workbooks hold what the docs say", {
   expect_identical(xlsx_sheets(xlkit_example("report.xlsx")), "Scores")
   expect_identical(
-    xlsx_sheets(xlkit_example("sales.xlsx")),
-    c("Summary", "Sales 2023", "Sales 2024", "Regions", "Notes")
+    xlsx_sheets(xlkit_example("births.xlsx")),
+    c("Summary", "Births 2023", "Births 2024", "Regions", "Notes")
   )
   expect_identical(
     xlsx_sheets(xlkit_example("messy.xlsx")),

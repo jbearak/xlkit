@@ -14,13 +14,13 @@ The path of the workbook, or the names of all of them.
 }
 \description{
 The workbooks that ship with xlkit, so that every example runs as
-written: \code{report.xlsx} (one sheet, \code{Scores}), \code{sales.xlsx} (five
-sheets; \verb{Sales 2024} has a title in B1, a note in B2 and its table in
-B5:F40), \code{messy.xlsx} (sheets \code{Headers}, \verb{Two-row header}, \code{Types} and
-\code{Missing}), \code{dates.xlsx} and its copy in the 1904 date system,
-\code{dates1904.xlsx}, and \code{template.xlsx} (a formatted \code{Cover} sheet, a
-chart on \code{Chart}, and a \code{Data} sheet the chart plots). Copy one before
-writing to it.
+written: \code{report.xlsx} (one sheet, \code{Scores}), \code{births.xlsx} (five
+sheets; \verb{Births 2024} has a title in B1, a note in B2 and its table of
+births by region and age of mother in B5:F40), \code{messy.xlsx} (sheets
+\code{Headers}, \verb{Two-row header}, \code{Types} and \code{Missing}), \code{dates.xlsx} and
+its copy in the 1904 date system, \code{dates1904.xlsx}, and
+\code{template.xlsx} (a formatted \code{Cover} sheet, a chart on \code{Chart}, and a
+\code{Data} sheet the chart plots). Copy one before writing to it.
 }
 \examples{
 xlkit_example()

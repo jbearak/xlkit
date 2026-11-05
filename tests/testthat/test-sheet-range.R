@@ -1,22 +1,22 @@
 # docs/r.md, "Choose a sheet and a range".
 
-sales <- function() xlkit_example("sales.xlsx")
+births <- function() xlkit_example("births.xlsx")
 
 test_that("a sheet is chosen by name or by position", {
-  by_name <- read_xlsx(sales(), sheet = "Regions")
-  by_position <- read_xlsx(sales(), sheet = 4)
+  by_name <- read_xlsx(births(), sheet = "Regions")
+  by_position <- read_xlsx(births(), sheet = 4)
   expect_identical(by_name, by_position)
-  expect_identical(names(by_name), c("region", "manager", "office"))
+  expect_identical(names(by_name), c("region", "code", "area_km2"))
 })
 
 test_that("a sheet name that is not there stops with the names that are", {
-  err <- expect_error(read_xlsx(sales(), sheet = "Sales 2042"), class = "rlang_error")
-  expect_identical(first_line(err), "sales.xlsx has no sheet \"Sales 2042\".")
+  err <- expect_error(read_xlsx(births(), sheet = "Births 2042"), class = "rlang_error")
+  expect_identical(first_line(err), "births.xlsx has no sheet \"Births 2042\".")
   msg <- conditionMessage(err)
-  expect_match(msg, "Did you mean \"Sales 2024\"?", fixed = TRUE)
-  expect_match(msg, "Its sheets are \"Summary\", \"Sales 2023\", \"Sales 2024\", \"Regions\" and \"Notes\".", fixed = TRUE)
-  expect_error(read_xlsx(sales(), sheet = 9), "sales.xlsx has 5 sheets, so there is no sheet 9.", fixed = TRUE)
-  expect_error(read_xlsx(sales(), sheet = "zzzzzzzz"), "has no sheet \"zzzzzzzz\"")
+  expect_match(msg, "Did you mean \"Births 2024\"?", fixed = TRUE)
+  expect_match(msg, "Its sheets are \"Summary\", \"Births 2023\", \"Births 2024\", \"Regions\" and \"Notes\".", fixed = TRUE)
+  expect_error(read_xlsx(births(), sheet = 9), "births.xlsx has 5 sheets, so there is no sheet 9.", fixed = TRUE)
+  expect_error(read_xlsx(births(), sheet = "zzzzzzzz"), "has no sheet \"zzzzzzzz\"")
 })
 
 test_that("chart sheets are listed, and reading one is an error", {
@@ -31,32 +31,32 @@ test_that("chart sheets are listed, and reading one is an error", {
 })
 
 test_that("a range is read as Excel shows it, and header = 5 reads the same table", {
-  t1 <- read_xlsx(sales(), sheet = "Sales 2024", range = "B5:F40")
+  t1 <- read_xlsx(births(), sheet = "Births 2024", range = "B5:F40")
   expect_identical(dim(t1), c(35L, 5L))
-  expect_identical(names(t1), c("region", "product", "units", "amount", "share"))
-  expect_type(t1$units, "integer")
-  expect_type(t1$amount, "double")
-  expect_identical(t1, read_xlsx(sales(), sheet = "Sales 2024", header = 5))
-  expect_identical(t1, read_xlsx(sales(), sheet = 3, range = "B5:F40"))
-  expect_identical(t1, read_xlsx(sales(), range = "'Sales 2024'!B5:F40"))
-  expect_identical(t1, read_xlsx(sales(), sheet = "Sales 2024", range = "B5"))
-  expect_identical(t1, read_xlsx(sales(), sheet = "Sales 2024", range = "B5:F"))
-  expect_identical(t1, read_xlsx(sales(), sheet = "Sales 2024", range = "$B$5:$F$40"))
-  expect_identical(t1, read_xlsx(sales(), sheet = "Sales 2024", range = "F40:B5"))
+  expect_identical(names(t1), c("region", "age", "women", "births", "asfr"))
+  expect_type(t1$women, "integer")
+  expect_type(t1$asfr, "double")
+  expect_identical(t1, read_xlsx(births(), sheet = "Births 2024", header = 5))
+  expect_identical(t1, read_xlsx(births(), sheet = 3, range = "B5:F40"))
+  expect_identical(t1, read_xlsx(births(), range = "'Births 2024'!B5:F40"))
+  expect_identical(t1, read_xlsx(births(), sheet = "Births 2024", range = "B5"))
+  expect_identical(t1, read_xlsx(births(), sheet = "Births 2024", range = "B5:F"))
+  expect_identical(t1, read_xlsx(births(), sheet = "Births 2024", range = "$B$5:$F$40"))
+  expect_identical(t1, read_xlsx(births(), sheet = "Births 2024", range = "F40:B5"))
   # An Excel table by name, from any sheet.
-  expect_identical(t1, read_xlsx(sales(), range = "SalesTable"))
-  expect_identical(t1, read_xlsx(sales(), sheet = "Notes", range = "salestable"))
+  expect_identical(t1, read_xlsx(births(), range = "BirthsTable"))
+  expect_identical(t1, read_xlsx(births(), sheet = "Notes", range = "birthstable"))
 })
 
 test_that("a defined name reads its range", {
-  regions <- read_xlsx(sales(), range = "RegionList")
-  expect_identical(regions, read_xlsx(sales(), sheet = "Regions"))
+  regions <- read_xlsx(births(), range = "RegionList")
+  expect_identical(regions, read_xlsx(births(), sheet = "Regions"))
   expect_identical(
     read_xlsx(edge(), range = "Block"),
     read_xlsx(edge(), sheet = "Ranges", range = "B3:D8")
   )
-  expect_error(read_xlsx(sales(), range = "SalesTabel"), "has no Excel table or defined name \"SalesTabel\"")
-  expect_error(read_xlsx(sales(), range = "SalesTabel"), "Did you mean \"SalesTable\"")
+  expect_error(read_xlsx(births(), range = "BirthsTabel"), "has no Excel table or defined name \"BirthsTabel\"")
+  expect_error(read_xlsx(births(), range = "BirthsTabel"), "Did you mean \"BirthsTable\"")
 })
 
 test_that("each form of range covers the cells the docs say", {
@@ -96,44 +96,44 @@ test_that("ranges outside the sheet or past Excel's limits stop and say which", 
 
 test_that("header rows must lie in the range", {
   expect_error(
-    read_xlsx(sales(), sheet = "Sales 2024", range = "B5:F40", header = 3),
+    read_xlsx(births(), sheet = "Births 2024", range = "B5:F40", header = 3),
     "`header = 3` is outside `range = \"B5:F40\"`, which covers rows 5 to 40.", fixed = TRUE
   )
-  t <- read_xlsx(sales(), sheet = "Sales 2024", range = "B4:F40", header = 5)
-  expect_identical(names(t), c("region", "product", "units", "amount", "share"))
+  t <- read_xlsx(births(), sheet = "Births 2024", range = "B4:F40", header = 5)
+  expect_identical(names(t), c("region", "age", "women", "births", "asfr"))
   expect_identical(nrow(t), 35L)
 })
 
 test_that("a header row below the data stops and names the last row with data", {
   expect_error(
-    read_xlsx(sales(), sheet = "Sales 2024", header = 50),
-    "`header = 50`, but the last row with data in sheet \"Sales 2024\" is 40.", fixed = TRUE
+    read_xlsx(births(), sheet = "Births 2024", header = 50),
+    "`header = 50`, but the last row with data in sheet \"Births 2024\" is 40.", fixed = TRUE
   )
-  expect_error(read_xlsx(sales(), sheet = "Sales 2024", header = 50), "Its data is in B1:F40.", fixed = TRUE)
+  expect_error(read_xlsx(births(), sheet = "Births 2024", header = 50), "Its data is in B1:F40.", fixed = TRUE)
   expect_error(
-    read_xlsx(sales(), sheet = "Sales 2024", range = "B:F", header = 41:42),
+    read_xlsx(births(), sheet = "Births 2024", range = "B:F", header = 41:42),
     "`header = 41:42`, but the last row with data in `range = \"B:F\"` is 40.", fixed = TRUE
   )
   # The last row with data is still a header, with no rows below it.
-  last <- read_xlsx(sales(), sheet = "Sales 2024", header = 40)
+  last <- read_xlsx(births(), sheet = "Births 2024", header = 40)
   expect_identical(nrow(last), 0L)
   expect_identical(ncol(last), 5L)
 })
 
 test_that("a title in row 1 is read as the header, with a warning that says what to do", {
-  w <- expect_warning(t <- read_xlsx(sales(), sheet = "Sales 2024"), class = "rlang_warning")
+  w <- expect_warning(t <- read_xlsx(births(), sheet = "Births 2024"), class = "rlang_warning")
   expect_identical(
     first_line(w),
-    "Row 1 has text only in B1 (\"Sales by region, 2024\"), but the rows below have up to 5 columns."
+    "Row 1 has text only in B1 (\"Births by region and age of mother, 2024\"), but the rows below have up to 5 columns."
   )
   expect_match(
     conditionMessage(w),
     "If the header is lower down, give its row: `header = 5`, or the range: `range = \"B5:F40\"`.",
     fixed = TRUE
   )
-  expect_identical(names(t)[[1]], "Sales by region, 2024")
+  expect_identical(names(t)[[1]], "Births by region and age of mother, 2024")
   # No warning when the header or range is given, or the sheet has no title.
-  expect_no_warning(read_xlsx(sales(), sheet = "Sales 2024", header = 5))
-  expect_no_warning(read_xlsx(sales(), sheet = "Regions"))
-  expect_no_warning(read_xlsx(sales(), sheet = "Notes"))
+  expect_no_warning(read_xlsx(births(), sheet = "Births 2024", header = 5))
+  expect_no_warning(read_xlsx(births(), sheet = "Regions"))
+  expect_no_warning(read_xlsx(births(), sheet = "Notes"))
 })

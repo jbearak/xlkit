@@ -1,6 +1,6 @@
 # docs/r.md, "Read every sheet", and xlsx_sheets().
 
-sales <- function() xlkit_example("sales.xlsx")
+births <- function() xlkit_example("births.xlsx")
 
 test_that("xlsx_sheets() lists sheets in tab order, chart sheets included", {
   expect_identical(
@@ -11,20 +11,20 @@ test_that("xlsx_sheets() lists sheets in tab order, chart sheets included", {
 })
 
 test_that("read_sheets() reads every worksheet into a named list", {
-  all <- suppressWarnings(read_sheets(sales()))
+  all <- suppressWarnings(read_sheets(births()))
   expect_type(all, "list")
-  expect_identical(names(all), c("Summary", "Sales 2023", "Sales 2024", "Regions", "Notes"))
-  expect_identical(all[["Regions"]], read_xlsx(sales(), sheet = "Regions"))
+  expect_identical(names(all), c("Summary", "Births 2023", "Births 2024", "Regions", "Notes"))
+  expect_identical(all[["Regions"]], read_xlsx(births(), sheet = "Regions"))
   expect_true(all(vapply(all, tibble::is_tibble, logical(1))))
 })
 
 test_that("read_sheets() passes read_xlsx()'s arguments to every sheet", {
-  two <- read_sheets(sales(), sheets = c("Sales 2023", "Sales 2024"), header = 5)
-  expect_identical(names(two), c("Sales 2023", "Sales 2024"))
-  expect_identical(two[["Sales 2024"]], read_xlsx(sales(), sheet = "Sales 2024", header = 5))
-  expect_identical(read_sheets(sales(), sheets = "^Sales", header = 5), two)
-  expect_identical(names(read_sheets(sales(), sheets = c(4, 1))), c("Regions", "Summary"))
-  expect_identical(names(read_sheets(sales(), sheets = "Notes")), "Notes")
+  two <- read_sheets(births(), sheets = c("Births 2023", "Births 2024"), header = 5)
+  expect_identical(names(two), c("Births 2023", "Births 2024"))
+  expect_identical(two[["Births 2024"]], read_xlsx(births(), sheet = "Births 2024", header = 5))
+  expect_identical(read_sheets(births(), sheets = "^Births", header = 5), two)
+  expect_identical(names(read_sheets(births(), sheets = c(4, 1))), c("Regions", "Summary"))
+  expect_identical(names(read_sheets(births(), sheets = "Notes")), "Notes")
 })
 
 test_that("read_sheets() skips chart sheets unless named, and reads empty sheets as empty tibbles", {
@@ -48,10 +48,10 @@ test_that("each tibble keeps its own problems, and messages name the sheet", {
 })
 
 test_that("read_sheets() checks its arguments", {
-  expect_error(read_sheets(sales(), sheet = "Notes"), "takes `sheets`, not `sheet`")
-  expect_error(read_sheets(sales(), skip = 4), "`...` must be named arguments of `read_xlsx()`", fixed = TRUE)
-  expect_error(read_sheets(sales(), sheets = "^Nope"), "No sheet of sales.xlsx is named \"^Nope\" or matches it", fixed = TRUE)
-  expect_error(read_sheets(sales(), sheets = c("Notes", "Nope")), "has no sheet \"Nope\"")
-  expect_error(read_sheets(sales(), sheets = "(["), "neither a sheet of sales.xlsx nor a regular expression")
-  expect_error(read_sheets(sales(), sheets = TRUE), "`sheets` must be")
+  expect_error(read_sheets(births(), sheet = "Notes"), "takes `sheets`, not `sheet`")
+  expect_error(read_sheets(births(), skip = 4), "`...` must be named arguments of `read_xlsx()`", fixed = TRUE)
+  expect_error(read_sheets(births(), sheets = "^Nope"), "No sheet of births.xlsx is named \"^Nope\" or matches it", fixed = TRUE)
+  expect_error(read_sheets(births(), sheets = c("Notes", "Nope")), "has no sheet \"Nope\"")
+  expect_error(read_sheets(births(), sheets = "(["), "neither a sheet of births.xlsx nor a regular expression")
+  expect_error(read_sheets(births(), sheets = TRUE), "`sheets` must be")
 })

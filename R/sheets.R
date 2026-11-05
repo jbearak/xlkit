@@ -5,7 +5,7 @@
 #'   sheets are included; reading one is an error.
 #' @export
 #' @examples
-#' xlsx_sheets(xlkit_example("sales.xlsx"))
+#' xlsx_sheets(xlkit_example("births.xlsx"))
 xlsx_sheets <- function(path) {
   call <- rlang::current_env()
   full <- check_xlsx(path, call)

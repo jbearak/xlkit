@@ -6,10 +6,10 @@ people made by hand without losing their charts and formats.
 ```r
 library(xlkit)
 
-sales <- read_xlsx("sales.xlsx", sheet = "Sales 2024", range = "B5:F40")
+births <- read_xlsx("births.xlsx", sheet = "Births 2024", range = "B5:F40")
 
-write_xlsx(list(Summary = summary, Detail = sales), "report.xlsx",
-           formats = c(share = "0.0%", amount = "#,##0"))
+write_xlsx(list(Summary = summary, Detail = births), "report.xlsx",
+           formats = c(women = "#,##0", births = "#,##0", asfr = "0.0"))
 
 write_cells("template.xlsx", sheet = "Cover", C4 = 1250, C5 = as.Date("2024-12-31"))
 ```

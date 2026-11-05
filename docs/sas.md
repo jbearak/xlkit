@@ -15,22 +15,22 @@ data frame they write.
 ## PROC IMPORT
 
 ```sas
-proc import datafile="sales.xlsx" out=sales dbms=xlsx replace;
-  range="Sales$B5:F40";
+proc import datafile="fertility.xlsx" out=births dbms=xlsx replace;
+  range="Births$B5:F40";
   getnames=yes;
 run;
 ```
 
 ```r
-sales <- read_xlsx("sales.xlsx", sheet = "Sales", range = "B5:F40")
+births <- read_xlsx("fertility.xlsx", sheet = "Births", range = "B5:F40")
 ```
 
 | SAS | xlkit |
 |---|---|
 | `proc import datafile="f.xlsx" out=df dbms=xlsx replace; run;` | `df <- read_xlsx("f.xlsx")` |
-| `sheet="Sales 2024";` | `sheet = "Sales 2024"` |
-| `range="Sales$B5:F40";` | `sheet = "Sales", range = "B5:F40"` |
-| `range="SalesTable";` (a named range) | `range = "SalesTable"`; an Excel table's name works too |
+| `sheet="Births 2024";` | `sheet = "Births 2024"` |
+| `range="Births$B5:F40";` | `sheet = "Births", range = "B5:F40"` |
+| `range="BirthsTable";` (a named range) | `range = "BirthsTable"`; an Excel table's name works too |
 | `getnames=no;` | `header = FALSE`: columns are named by their letters, `A`, `B`, ... |
 | `options validvarname=v7;` (the default) | `names = "stata"`: letters, digits and `_`, at most 32 characters, as V7 allows; a header that had to change is kept as the column's `label` |
 | `options validvarname=any;` | `names = "unique"` (the default): the header text as it is, such as `` df$`Share %` `` |
@@ -39,7 +39,7 @@ Reading through the `XLSX` engine:
 
 | SAS | xlkit |
 |---|---|
-| `libname x xlsx "f.xlsx";` then `data df; set x."Sales 2024"n; run;` | `df <- read_xlsx("f.xlsx", sheet = "Sales 2024")` |
+| `libname x xlsx "f.xlsx";` then `data df; set x."Births 2024"n; run;` | `df <- read_xlsx("f.xlsx", sheet = "Births 2024")` |
 | `proc datasets lib=x; quit;` to list the sheets | `xlsx_sheets("f.xlsx")` |
 | a macro loop over the sheets of `x` | `read_sheets("f.xlsx")`: a named list of tibbles |
 
@@ -82,13 +82,14 @@ write_xlsx(list(Summary = summary, Detail = detail), "report.xlsx",
 | `options(sheet_interval="none")` (tables stacked on one sheet) | `write_xlsx(list(Results = list("Table 1" = a, "Table 2" = b)), ...)` |
 | `options(frozen_headers="on")` | nothing: `freeze = TRUE` is the default |
 | `options(autofilter="all")` | `filter = TRUE` |
-| `options(absolute_column_width="20,12")` | `widths = c(region = 20, amount = 12)`, or `widths = 20` for every column; the default fits each column to its contents |
+| `options(absolute_column_width="20,12")` | `widths = c(region = 20, births = 12)`, or `widths = 20` for every column; the default fits each column to its contents |
 | `proc print ... label` | `header = "labels"` |
-| `format share percent8.1 amount comma12.;` | `formats = c(share = "0.0%", amount = "#,##0")` |
+| `format asfr 8.1 births comma12.;` | `formats = c(asfr = "0.0", births = "#,##0")` |
 | `style(header)=[font_weight=bold]` | nothing: `header_style = xl_style(bold = TRUE)` is the default |
 
-A percent format multiplies by 100 in Excel as in SAS, so a share
-stored as 0.256 shows as 25.6% in both.
+A percent format (`percent8.1` in SAS, `"0.0%"` in xlkit) multiplies
+by 100 in Excel as in SAS, so a share stored as 0.256 shows as 25.6% in
+both.
 
 ## Filling in a template
 
