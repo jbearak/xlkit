@@ -98,7 +98,7 @@ Each column type becomes:\tabular{ll}{
    \code{POSIXct} \tab a date-time on the clock of its time zone, shown \verb{yyyy-mm-dd hh:mm:ss} \cr
    \code{hms}, \code{difftime} \tab a time, shown \code{hh:mm:ss} (\verb{[h]:mm:ss} when one is 24 hours or more) \cr
    factor \tab its labels, as text \cr
-   dtaparser or haven labelled \tab its value labels, as text; a code without a label is written as the code, with a message \cr
+   labelled (haven, labelled, sjlabelled, dtaparser) \tab its value labels, as text; a code without a label is written as the code, with a message \cr
    \code{\link[=xl_formula]{xl_formula()}} \tab formulas \cr
    list \tab an error naming the column \cr
 }

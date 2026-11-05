@@ -1,11 +1,9 @@
-# From a do-file to R: Excel lines
+# From Stata to R: Excel lines
 
-Each `import excel`, `export excel` and `putexcel` line of a do-file has
-one line of xlkit. A translated script starts:
+This page gives the xlkit line for each `import excel`, `export excel`
+and `putexcel` line. [docs/r.md](r.md) covers each task in full.
 
 ```r
-library(dtaparser)
-library(datakit)
 library(xlkit)
 ```
 
@@ -36,8 +34,7 @@ Two things differ:
 
 - Stata picks a numeric or string type for each column from its cells,
   as xlkit does, but puts dates in numeric variables with a `%td`
-  format. xlkit gives `Date` and `POSIXct` columns; dtaparser's
-  `save_dta()` writes them as `%td` and `%tc`.
+  format. xlkit gives `Date` and `POSIXct` columns.
 - `import excel` reads an Excel error as missing without saying so.
   xlkit warns and lists the cells: `xlsx_problems(df)`.
 

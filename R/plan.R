@@ -366,6 +366,6 @@ unlabelled_message <- function(name, unlabelled, cells, label) {
       " whose code has no value label: ", paste(parts, collapse = "; "), ".\n",
       if (n == 1) "It is written as a code." else "They are written as codes."
     )),
-    i = "Add a label with `dtaparser::with_labels()`, or write the column's codes with `values = \"codes\"`."
+    i = "Add a value label for each code, or write the column's codes with `values = \"codes\"`."
   )
 }

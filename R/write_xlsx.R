@@ -18,7 +18,7 @@
 #' | `POSIXct` | a date-time on the clock of its time zone, shown `yyyy-mm-dd hh:mm:ss` |
 #' | `hms`, `difftime` | a time, shown `hh:mm:ss` (`[h]:mm:ss` when one is 24 hours or more) |
 #' | factor | its labels, as text |
-#' | dtaparser or haven labelled | its value labels, as text; a code without a label is written as the code, with a message |
+#' | labelled (haven, labelled, sjlabelled, dtaparser) | its value labels, as text; a code without a label is written as the code, with a message |
 #' | [xl_formula()] | formulas |
 #' | list | an error naming the column |
 #'

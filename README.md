@@ -28,13 +28,9 @@ write_cells("template.xlsx", sheet = "Cover", C4 = 1250, C5 = as.Date("2024-12-3
   only the cells they write and copy the rest of the file byte for
   byte: charts, comments, conditional formats, pivot tables, macros.
   `write_xlsx()` never replaces a file unless told to.
-- **Stata's labels.** Variable labels as the header, value labels as
-  the text, and long headers back as variable labels, in the form
-  dtaparser's `read_dta()` and `save_dta()` use.
-
-xlkit sits next to [datakit](https://github.com/jbearak/dta-parser),
-which translates do-files to R: [docs/stata.md](docs/stata.md) gives the
-xlkit line for each `import excel`, `export excel` and `putexcel` line.
+- **Labels.** Variable labels as the header, value labels as the
+  text, and long headers back as variable labels, for labelled columns
+  from haven, labelled, sjlabelled or dtaparser.
 
 Two judges, Claude Sonnet and GPT Terra, compared xlkit's design and
 documentation with those of readxl and writexl, openxlsx2, pandas,
@@ -57,12 +53,8 @@ R 4.2 or later. Building needs Rust (<https://rustup.rs>); on Windows,
 Rtools as well. See [Install](docs/r.md#install) for each platform and
 what to do when it fails.
 
-The examples with Stata's labels use dtaparser, which reads and writes
-`.dta` files. xlkit does not need it otherwise:
-
-```r
-install.packages("dtaparser", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
-```
+xlkit reads and writes the labelled columns of haven, labelled,
+sjlabelled and dtaparser, and needs none of them installed.
 
 ## Guide
 
@@ -84,8 +76,21 @@ workbooks shipped with the package (`xlkit_example()`):
 | fill in a template: replace a sheet, put values into cells | [Fill in an existing workbook](docs/r.md#fill-in-an-existing-workbook) |
 | write Stata's variable and value labels, read headers as labels | [Variable labels and value labels](docs/r.md#variable-labels-and-value-labels) |
 | understand a warning or an error | [Messages](docs/r.md#messages-and-what-to-do-about-them) |
-| switch from readxl, writexl or openxlsx2 | [Coming from ...](docs/r.md#coming-from-readxl-writexl-or-openxlsx2) |
 | look up every argument | [Reference](docs/r.md#reference) |
+
+## Coming from another tool
+
+Each page gives the xlkit line for the code you already write:
+
+| coming from | see |
+|---|---|
+| Stata: `import excel`, `export excel`, `putexcel` | [docs/stata.md](docs/stata.md) |
+| SAS: `PROC IMPORT`, `PROC EXPORT`, `ODS EXCEL`, the `XLSX` engine | [docs/sas.md](docs/sas.md) |
+| SPSS: `GET DATA /TYPE=XLSX`, `SAVE TRANSLATE` | [docs/spss.md](docs/spss.md) |
+| Python: pandas, openpyxl, polars | [docs/python.md](docs/python.md) |
+| R: readxl and writexl | [docs/readxl.md](docs/readxl.md) |
+| R: openxlsx2 | [docs/openxlsx2.md](docs/openxlsx2.md) |
+| R: openxlsx | [docs/openxlsx.md](docs/openxlsx.md) |
 
 ## Acknowledgements
 

@@ -17,7 +17,7 @@
 #   months of values, as many rows as the template's Data sheet) and
 #   `model_table` (a small table of estimates), results.xlsx (a copy of
 #   template.xlsx, with sheets Cover, Chart and Data), and survey.dta
-#   (written with dtaparser, whose `sex` is labelled Male and Female and
+#   (written with haven, whose `sex` is labelled Male and Female and
 #   whose `agefb` is labelled "Age at first birth");
 # - README.md's first example, in a folder holding sales.xlsx and
 #   template.xlsx, where `summary` is the Summary sheet.
@@ -25,7 +25,7 @@
 # A block of output with no code, such as a message shown on its own, is
 # checked against what the code block above it prints.
 #
-# `library` is where xlkit (and dtaparser) are installed, if not on the
+# `library` is where xlkit (and haven) are installed, if not on the
 # default path. Exits with status 1 when an output differs or an example
 # without output fails.
 
@@ -102,8 +102,8 @@ write_setup <- c(
   "  model_table <- data.frame(term = c('(Intercept)', 'price'), estimate = c(12.4, -0.8), std_error = c(1.1, 0.2))",
   "  file.copy(xlkit::xlkit_example('template.xlsx'), 'results.xlsx')",
   "  .sex <- rep(c(1, 2), length.out = 40)",
-  "  dtaparser::save_dta(data.frame(",
-  "    sex = dtaparser::with_labels(.sex, c(Male = 1, Female = 2), label = 'Sex'),",
+  "  haven::write_dta(data.frame(",
+  "    sex = haven::labelled(.sex, c(Male = 1, Female = 2), label = 'Sex'),",
   "    agefb = structure(seq(16, by = 0.5, length.out = 40), label = 'Age at first birth')",
   "  ), 'survey.dta')",
   "}))"

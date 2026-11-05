@@ -23,11 +23,12 @@ Contents:
 - [Fill in an existing workbook](#fill-in-an-existing-workbook)
 - [Variable labels and value labels](#variable-labels-and-value-labels)
 - [Messages and what to do about them](#messages-and-what-to-do-about-them)
-- [Coming from readxl, writexl or openxlsx2](#coming-from-readxl-writexl-or-openxlsx2)
+- [Coming from another package or tool](#coming-from-another-package-or-tool)
 - [Reference](#reference)
 
-Translating a do-file? [docs/stata.md](stata.md) gives the xlkit line
-for each `import excel`, `export excel` and `putexcel` line.
+Coming from readxl, writexl, openxlsx, openxlsx2, Python, Stata, SAS or
+SPSS? [Each has a page](#coming-from-another-package-or-tool) that gives
+the xlkit line for the code you already write.
 
 ## Install
 
@@ -54,14 +55,15 @@ at <https://github.com/jbearak/xlkit/issues> with the output of
 `remotes::install_github("jbearak/xlkit")` and `sessionInfo()`.
 
 xlkit imports only rlang, tibble, vctrs and hms. It reads and writes
-dtaparser's labelled columns without depending on dtaparser.
+the labelled columns of haven, labelled, sjlabelled and dtaparser
+without depending on any of them.
 
-dtaparser reads and writes Stata `.dta` files, and
+The examples in
 [Variable labels and value labels](#variable-labels-and-value-labels)
-uses it. xlkit does not need it otherwise. To install it:
+use haven. To install it:
 
 ```r
-install.packages("dtaparser", repos = c("https://jbearak.github.io/dta-parser", "https://cloud.r-project.org"))
+install.packages("haven")
 ```
 
 Check the install:
@@ -317,8 +319,8 @@ attr(df$share_percent, "label")
 #> [1] "Share %"
 ```
 
-dtaparser's `var_label()` reads the same attribute, and its
-`save_dta()` writes it as the Stata variable label.
+haven, labelled and sjlabelled read the same attribute as the variable
+label, and `haven::write_dta()` and `haven::write_sav()` write it.
 
 ## Column types
 
@@ -561,7 +563,7 @@ Each column type becomes:
 | `POSIXct` | a date-time on the clock of its time zone, shown `yyyy-mm-dd hh:mm:ss` |
 | `hms`, `difftime` | a time, shown `hh:mm:ss` (`[h]:mm:ss` when one is 24 hours or more) |
 | factor | its labels, as text |
-| dtaparser or haven labelled | its value labels, as text (see [labels](#variable-labels-and-value-labels)) |
+| labelled (haven, labelled, sjlabelled, dtaparser) | its value labels, as text (see [labels](#variable-labels-and-value-labels)) |
 | list | an error naming the column |
 
 Reading the file back with `read_xlsx()` gives the same columns, apart
@@ -833,16 +835,17 @@ table when the new rows extend it, unless the table has a totals row.
 
 ## Variable labels and value labels
 
-A table read with dtaparser's `read_dta()` keeps Stata's variable labels
-in each column's `label` attribute, and value labels in labelled
-columns. haven's labelled columns work the same way.
+A labelled column keeps its variable label in a `label` attribute and
+its value labels in a `labels` attribute. haven, labelled, sjlabelled
+and dtaparser all keep them that way, and xlkit reads and writes the
+columns of each. The examples use haven.
 
 `write_xlsx()` writes value labels as text by default, as Stata's
 `export excel` does. `header = "labels"` puts the variable labels in the
 header row, using the name where a column has no label:
 
 ```r
-df <- dtaparser::read_dta("survey.dta")
+df <- haven::read_dta("survey.dta")
 write_xlsx(df, "survey.xlsx", header = "labels")
 ```
 
@@ -856,19 +859,19 @@ write_xlsx(df, "survey.xlsx", header = "labels")
 | `values = "codes"` | a labelled column is written as its codes |
 
 A code without a value label is written as the code, with a message
-that names the cells. `dtaparser::with_labels(x, labels, label = NULL)`
+that names the cells. `haven::labelled(x, labels, label = NULL)`
 makes a labelled column from codes `x`, value labels `labels` (a vector
 of codes named by their labels) and an optional variable label:
 
 ```r
 df <- data.frame(
   id = 1:5,
-  sex = dtaparser::with_labels(c(1, 2, 9, 2, 9), c(Male = 1, Female = 2), label = "Sex")
+  sex = haven::labelled(c(1, 2, 9, 2, 9), c(Male = 1, Female = 2), label = "Sex")
 )
 write_xlsx(df, "codes.xlsx")
 #> `sex` has 2 cells whose code has no value label: 9 in B4 and B6.
 #> They are written as codes.
-#> ℹ Add a label with `dtaparser::with_labels()`, or write the column's codes with `values = "codes"`.
+#> ℹ Add a value label for each code, or write the column's codes with `values = "codes"`.
 ```
 
 `sex` is column B, below the header in row 1, so its third and fifth
@@ -881,20 +884,20 @@ with clean names and keeps the headers as variable labels:
 df <- read_xlsx("survey.xlsx", names = "snake")
 attr(df$age_at_first_birth, "label")
 #> [1] "Age at first birth"
-dtaparser::save_dta(df, "survey.dta")   # keeps them as variable labels
+haven::write_dta(df, "survey.dta")   # keeps them as variable labels
 ```
 
 `"snake"` cleans names but does not shorten them. Stata allows 32
 characters, and only `names = "stata"` cuts names to that length.
 
 xlkit does not turn text back into value labels. To do that after
-reading, give `dtaparser::with_labels()` the codes and the labels:
+reading, give `haven::labelled()` the codes and the labels:
 
 ```r
-df$sex <- dtaparser::with_labels(match(df$sex, c("Male", "Female")), c(Male = 1, Female = 2))
+df$sex <- haven::labelled(match(df$sex, c("Male", "Female")), c(Male = 1, Female = 2))
 ```
 
-`haven::labelled()` works the same way.
+`sjlabelled::set_labels()` and `dtaparser::with_labels()` work too.
 
 ## Messages and what to do about them
 
@@ -923,34 +926,23 @@ df$sex <- dtaparser::with_labels(match(df$sex, c("Male", "Female")), c(Male = 1,
 | `... has no sheet "X", so it is added` | `write_cells()` or `write_sheet()` named a sheet the workbook does not have | nothing, if you meant a new sheet; otherwise use the name it suggests |
 | `cannot edit this worksheet: ...` | the sheet's XML uses a form xlkit cannot splice safely | open and save the file in Excel, then try again |
 
-## Coming from readxl, writexl or openxlsx2
+## Coming from another package or tool
 
-| task | readxl / writexl | openxlsx2 | xlkit |
-|---|---|---|---|
-| read a sheet by name | `read_excel(p, sheet = "S")` | `wb_to_df(p, sheet = "S")` | `read_xlsx(p, sheet = "S")` |
-| table below titles | `read_excel(p, skip = 4)` | `wb_to_df(p, start_row = 5)` | `read_xlsx(p, header = 5)` |
-| some column types | all of them: `col_types = c("text", "guess", ...)` | `wb_to_df(p, types = c(zip = "character"))` | `types = c(zip = "text")` |
-| read every sheet | `lapply(excel_sheets(p), read_excel, path = p)` | a loop over `wb_get_sheet_names()` | `read_sheets(p)` |
-| write several sheets | `write_xlsx(list(a = x, b = y), p)` | `write_xlsx(list(a = x, b = y), p)` | `write_xlsx(list(a = x, b = y), p)` |
-| number formats | `xl_sheet(df, cols = list(xl_col_spec("share", format = xl_num_format("0.0%"))))` | `wb$add_numfmt(dims = wb_dims(x = df, cols = "share"), numfmt = "0.0%")` | `formats = c(share = "0.0%")` |
-| fill a template | not possible | `wb_load(p)$add_data(sheet = "Cover", x = 1250, dims = "C4")$save(p)` | `write_cells(p, "Cover", C4 = 1250)` |
+Each page gives the xlkit line for the code you already write:
 
-Differences that change results:
+| coming from | see |
+|---|---|
+| readxl and writexl | [readxl.md](readxl.md) |
+| openxlsx2 | [openxlsx2.md](openxlsx2.md) |
+| openxlsx | [openxlsx.md](openxlsx.md) |
+| Python: pandas, openpyxl, polars | [python.md](python.md) |
+| Stata: `import excel`, `export excel`, `putexcel` | [stata.md](stata.md) |
+| SAS: `PROC IMPORT`, `PROC EXPORT`, `ODS EXCEL`, the `XLSX` engine | [sas.md](sas.md) |
+| SPSS: `GET DATA /TYPE=XLSX`, `SAVE TRANSLATE` | [spss.md](spss.md) |
 
-- xlkit guesses types from every cell; readxl uses the first 1,000 rows
-  (`guess_max`), so a text cell further down is `NA` with a warning.
-- readxl reads an Excel error as `NA` without a word; xlkit warns and
-  lists it in `xlsx_problems()`.
-- openxlsx2 writes `NA` as the Excel error `#N/A` unless told otherwise,
-  so `SUM()` over the column fails; xlkit writes a blank cell.
-- openxlsx2 fills a template by loading it into its model and saving the
-  model, which keeps what the model covers; xlkit's `write_cells()`
-  copies every part it does not write.
-- readxl counts `skip` from the first row with data; xlkit's `header`
-  and `range` are Excel's own row numbers.
-- `xlkit::read_xlsx()` and `xlkit::write_xlsx()` have the same names
-  as functions in readxl, writexl and openxlsx2. Attach only one of
-  them, or write `xlkit::`.
+`xlkit::read_xlsx()` and `xlkit::write_xlsx()` have the same names as
+functions in readxl, writexl and openxlsx2. Attach only one of them, or
+write `xlkit::`.
 
 ## Reference
 

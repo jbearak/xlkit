@@ -138,7 +138,13 @@ dated <- function(out, days, serial, numbers) {
   numbers(out, serial, keep)
 }
 
-is_labelled <- function(x) inherits(x, c("dtaparser_labelled", "haven_labelled"))
+# dtaparser's and haven's labelled classes (the labelled package makes
+# haven's), or a plain vector with value labels in a named `labels`
+# attribute, as sjlabelled makes.
+is_labelled <- function(x) {
+  inherits(x, c("dtaparser_labelled", "haven_labelled")) ||
+    (!is.object(x) && (is.numeric(x) || is.character(x)) && !is.null(names(attr(x, "labels", exact = TRUE))))
+}
 
 # The tag of each tagged NA ("a" to "z"), or "" (dtaparser and haven keep
 # Stata's .a to .z in a NaN's payload).

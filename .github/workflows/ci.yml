@@ -66,7 +66,7 @@ jobs:
 
   # The examples in docs/r.md and README.md, run against the installed
   # package; their output must match the docs. The labels examples read
-  # and write .dta files with dtaparser, which is not on CRAN.
+  # and write .dta files with haven, which xlkit suggests.
   docs:
     runs-on: ubuntu-latest
     env:
@@ -78,8 +78,5 @@ jobs:
         with:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::remotes
-      - run: Rscript -e 'remotes::install_github("jbearak/dta-parser", subdir = "r/dtaparser", upgrade = "never")'
       - run: R CMD INSTALL .
       - run: Rscript tools/check-docs.R

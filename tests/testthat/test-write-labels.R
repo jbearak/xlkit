@@ -23,7 +23,7 @@ test_that("value labels are written as text, codes without one as codes, with a 
   expect_identical(plain_message(msg), paste0(
     "`sex` has 3 cells whose code has no value label: 9 in A5, A12 and A30.\n",
     "They are written as codes.\n",
-    "i Add a label with `dtaparser::with_labels()`, or write the column's codes with `values = \"codes\"`."
+    "i Add a value label for each code, or write the column's codes with `values = \"codes\"`."
   ))
   back <- read_xlsx(path)
   expect_identical(back$sex[1:4], c("Male", "Female", "Male", "9"))
@@ -40,6 +40,15 @@ test_that("the message names each code and one cell in the singular", {
   y <- dta_labelled(c(1, 7), c(One = 1))
   msg <- expect_message(write_xlsx(tibble::tibble(y = y), temp_xlsx()), class = "rlang_message")
   expect_identical(first_line(msg), "`y` has 1 cell whose code has no value label: 7 in A3.\nIt is written as a code.")
+})
+
+test_that("value labels in a plain `labels` attribute, as sjlabelled keeps them, are written as text", {
+  path <- temp_xlsx()
+  sex <- structure(c(1, 2, 2), labels = c(Male = 1, Female = 2), label = "Sex")
+  write_xlsx(tibble::tibble(sex = sex), path, header = "labels")
+  expect_identical(read_xlsx(path)$Sex, c("Male", "Female", "Female"))
+  write_xlsx(tibble::tibble(sex = sex), path, values = "codes", replace = TRUE)
+  expect_identical(read_xlsx(path)$sex, c(1L, 2L, 2L))
 })
 
 test_that("values = \"codes\" writes the codes, without a message", {
