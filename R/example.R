@@ -1,13 +1,13 @@
 #' Example workbooks
 #'
 #' The workbooks that ship with xlkit, so that every example runs as
-#' written: `report.xlsx` (one sheet, `Scores`), `sales.xlsx` (five
-#' sheets; `Sales 2024` has a title in B1, a note in B2 and its table in
-#' B5:F40), `messy.xlsx` (sheets `Headers`, `Two-row header`, `Types` and
-#' `Missing`), `dates.xlsx` and its copy in the 1904 date system,
-#' `dates1904.xlsx`, and `template.xlsx` (a formatted `Cover` sheet, a
-#' chart on `Chart`, and a `Data` sheet the chart plots). Copy one before
-#' writing to it.
+#' written: `report.xlsx` (one sheet, `Scores`), `births.xlsx` (five
+#' sheets; `Births 2024` has a title in B1, a note in B2 and its table of
+#' births by region and age of mother in B5:F40), `messy.xlsx` (sheets
+#' `Headers`, `Two-row header`, `Types` and `Missing`), `dates.xlsx` and
+#' its copy in the 1904 date system, `dates1904.xlsx`, and
+#' `template.xlsx` (a formatted `Cover` sheet, a chart on `Chart`, and a
+#' `Data` sheet the chart plots). Copy one before writing to it.
 #'
 #' @param name A workbook's file name, or `NULL` to list them.
 #' @return The path of the workbook, or the names of all of them.

@@ -52,7 +52,7 @@
 #' @param values For labelled columns: `"labels"` writes the value labels
 #'   as text, `"codes"` the codes.
 #' @param formats Excel number formats by column name, such as
-#'   `c(share = "0.0%", amount = "#,##0")`. The values are unchanged;
+#'   `c(births = "#,##0", asfr = "0.0")`. The values are unchanged;
 #'   only how Excel shows them. A percent format multiplies by 100, so a
 #'   column whose numbers are all 1 or more (or -1 or less) with one gets
 #'   a message.
@@ -88,11 +88,11 @@
 #' write_xlsx(scores, path, sheet = "Scores", replace = TRUE)
 #' read_xlsx(path)
 #'
-#' sales <- read_xlsx(xlkit_example("sales.xlsx"), sheet = "Sales 2024", header = 5)
+#' births <- read_xlsx(xlkit_example("births.xlsx"), sheet = "Births 2024", header = 5)
 #' write_xlsx(
-#'   list(Sales = sales, Tables = list("Units" = sales[1:3, 1:3], "Amounts" = sales[1:3, c(1, 4)])),
-#'   file.path(tempdir(), "sales.xlsx"),
-#'   formats = c(share = "0.0%", amount = "#,##0"),
+#'   list(Births = births, Tables = list("Women" = births[1:3, 1:3], "Rates" = births[1:3, c(1, 2, 5)])),
+#'   file.path(tempdir(), "births.xlsx"),
+#'   formats = c(women = "#,##0", births = "#,##0", asfr = "0.0"),
 #'   styles = list(region = xl_style(bold = TRUE)),
 #'   replace = TRUE
 #' )
@@ -341,7 +341,7 @@ check_formats <- function(formats, columns, of_x, call) {
   nm <- names(formats)
   if (!is.character(formats) || anyNA(formats) || is.null(nm) || any(is.na(nm) | !nzchar(nm)) ||
       any(!nzchar(formats))) {
-    rlang::abort("`formats` must be number formats named by column, such as c(share = \"0.0%\", amount = \"#,##0\").",
+    rlang::abort("`formats` must be number formats named by column, such as c(births = \"#,##0\", asfr = \"0.0\").",
                  call = call)
   }
   bad <- setdiff(nm, columns)

@@ -19,12 +19,12 @@ writes it, and names cells as Excel shows them.
 | openxlsx2 | xlkit |
 |---|---|
 | `wb_to_df(p)` or `read_xlsx(p)` | `read_xlsx(p)`: a tibble, not a `data.frame` |
-| `wb_to_df(p, sheet = "Sales 2024")` | `read_xlsx(p, sheet = "Sales 2024")` |
+| `wb_to_df(p, sheet = "Births 2024")` | `read_xlsx(p, sheet = "Births 2024")` |
 | `wb_get_sheet_names(wb_load(p))` | `xlsx_sheets(p)` |
 | `wb_to_df(p, dims = "B5:F40")` | `read_xlsx(p, range = "B5:F40")` |
 | `wb_to_df(p, dims = "B5:F+")` | `read_xlsx(p, range = "B5:F")` |
 | `wb_to_df(p, start_row = 5)` | `read_xlsx(p, header = 5)` |
-| `wb_to_df(p, named_region = "SalesTable")` | `read_xlsx(p, range = "SalesTable")` |
+| `wb_to_df(p, named_region = "BirthsTable")` | `read_xlsx(p, range = "BirthsTable")` |
 | `wb_to_df(p, col_names = FALSE)` | `read_xlsx(p, header = FALSE)` |
 | `wb_to_df(p, check_names = TRUE)` | `read_xlsx(p, names = "snake")`: syntactic names, in lower case with `_` |
 | `wb_to_df(p, types = c(zip = "character"))` | `read_xlsx(p, types = c(zip = "text"))` |

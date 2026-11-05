@@ -15,7 +15,7 @@ startCol = 3`); xlkit names cells as Excel shows them (`C4`).
 | openxlsx | xlkit |
 |---|---|
 | `read.xlsx(p)` | `read_xlsx(p)`: a tibble, not a `data.frame` |
-| `read.xlsx(p, sheet = "Sales 2024")` | `read_xlsx(p, sheet = "Sales 2024")` |
+| `read.xlsx(p, sheet = "Births 2024")` | `read_xlsx(p, sheet = "Births 2024")` |
 | `getSheetNames(p)` | `xlsx_sheets(p)` |
 | `read.xlsx(p, startRow = 5)` | `read_xlsx(p, header = 5)` |
 | `read.xlsx(p, rows = 5:40, cols = 2:6)` | `read_xlsx(p, range = "B5:F40")` |

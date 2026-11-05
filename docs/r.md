@@ -82,14 +82,14 @@ it lists them:
 
 ```r
 xlkit_example()
-#> [1] "dates.xlsx"     "dates1904.xlsx" "messy.xlsx"     "report.xlsx"
-#> [5] "sales.xlsx"     "template.xlsx"
+#> [1] "births.xlsx"    "dates.xlsx"     "dates1904.xlsx" "messy.xlsx"
+#> [5] "report.xlsx"    "template.xlsx"
 ```
 
 | workbook | what it holds |
 |---|---|
 | `report.xlsx` | one sheet, `Scores`, with a header in row 1 and five columns of different types |
-| `sales.xlsx` | five sheets; `Sales 2024` has a title in `B1`, a note in `B2` and its table in `B5:F40` |
+| `births.xlsx` | five sheets; `Births 2024` has a title in `B1`, a note in `B2` and its table in `B5:F40`: women, births and age-specific fertility rates (`asfr`, births per 1,000 women) by region and age of mother |
 | `messy.xlsx` | sheets `Headers` (blank and duplicate header cells), `Two-row header`, `Types` (mixed columns) and `Missing` (missing-value codes and Excel errors) |
 | `dates.xlsx` | dates, date-times and times of day; a copy in the 1904 date system is `dates1904.xlsx` |
 | `template.xlsx` | a formatted `Cover` sheet, a chart on `Chart`, and a `Data` sheet the chart plots |
@@ -158,33 +158,33 @@ columns.
 List the sheets, in tab order:
 
 ```r
-path <- xlkit_example("sales.xlsx")
+path <- xlkit_example("births.xlsx")
 xlsx_sheets(path)
-#> [1] "Summary"    "Sales 2023" "Sales 2024" "Regions"    "Notes"
+#> [1] "Summary"     "Births 2023" "Births 2024" "Regions"     "Notes"
 ```
 
 Pick a sheet by its name or its position (counting tabs from 1):
 
 ```r
-read_xlsx(path, sheet = "Sales 2024")
+read_xlsx(path, sheet = "Births 2024")
 read_xlsx(path, sheet = 3)
 ```
 
 A name that is not in the workbook stops with the names that are:
 
 ```r
-read_xlsx(path, sheet = "Sales 2042")
+read_xlsx(path, sheet = "Births 2042")
 #> Error in `read_xlsx()`:
-#> ! sales.xlsx has no sheet "Sales 2042".
-#> ℹ Did you mean "Sales 2024"?
-#> ℹ Its sheets are "Summary", "Sales 2023", "Sales 2024", "Regions" and "Notes".
+#> ! births.xlsx has no sheet "Births 2042".
+#> ℹ Did you mean "Births 2024"?
+#> ℹ Its sheets are "Summary", "Births 2023", "Births 2024", "Regions" and "Notes".
 ```
 
-`Sales 2024` has a title in `B1`, a note in `B2` and its table in
+`Births 2024` has a title in `B1`, a note in `B2` and its table in
 `B5:F40`. Give the range as Excel shows it:
 
 ```r
-sales <- read_xlsx(path, sheet = "Sales 2024", range = "B5:F40")
+births <- read_xlsx(path, sheet = "Births 2024", range = "B5:F40")
 ```
 
 The first row of the range, row 5, gives the names; rows 6 to 40 are
@@ -197,22 +197,22 @@ the body. Other ways to give a range:
 | `"B5:F"` | columns B to F, from row 5 down to the last row with a value |
 | `"B:F"` | columns B to F, from their first row with a value |
 | `"5:40"` | rows 5 to 40, every column with a value |
-| `"SalesTable"` | the Excel table (Insert ▸ Table) or defined name `SalesTable`, from any sheet |
+| `"BirthsTable"` | the Excel table (Insert ▸ Table) or defined name `BirthsTable`, from any sheet |
 
 When the table runs to the bottom of the sheet, the header row alone
 is enough: `header = 5` reads from row 5 down, as wide as the data.
 
 ```r
-sales <- read_xlsx(path, sheet = "Sales 2024", header = 5)
+births <- read_xlsx(path, sheet = "Births 2024", header = 5)
 ```
 
 A header row below the last row with data stops, and says where the
 data is. The last row with data is a header with no rows below it.
 
 ```r
-read_xlsx(path, sheet = "Sales 2024", header = 50)
+read_xlsx(path, sheet = "Births 2024", header = 50)
 #> Error in `read_xlsx()`:
-#> ! `header = 50`, but the last row with data in sheet "Sales 2024" is 40.
+#> ! `header = 50`, but the last row with data in sheet "Births 2024" is 40.
 #> ℹ Its data is in B1:F40.
 ```
 
@@ -220,9 +220,9 @@ If you read such a sheet without either, xlkit takes the title in row 1
 as the header and warns:
 
 ```r
-df <- read_xlsx(path, sheet = "Sales 2024")
+df <- read_xlsx(path, sheet = "Births 2024")
 #> Warning message:
-#> Row 1 has text only in B1 ("Sales by region, 2024"), but the rows below have up to 5 columns.
+#> Row 1 has text only in B1 ("Births by region and age of mother, 2024"), but the rows below have up to 5 columns.
 #> ℹ If the header is lower down, give its row: `header = 5`, or the range: `range = "B5:F40"`.
 ```
 
@@ -514,28 +514,28 @@ reads as `"#N/A"`, without a warning.
 `read_sheets()` reads each sheet into a list of tibbles named by sheet:
 
 ```r
-all <- read_sheets(xlkit_example("sales.xlsx"))
+all <- read_sheets(xlkit_example("births.xlsx"))
 #> Warning messages:
-#> 1: Sheet "Sales 2023": Row 1 has text only in B1 ("Sales by region, 2023"), but the rows below have up to 5 columns.
+#> 1: Sheet "Births 2023": Row 1 has text only in B1 ("Births by region and age of mother, 2023"), but the rows below have up to 5 columns.
 #> ℹ If the header is lower down, give its row: `header = 5`, or the range: `range = "B5:F40"`.
-#> 2: Sheet "Sales 2024": Row 1 has text only in B1 ("Sales by region, 2024"), but the rows below have up to 5 columns.
+#> 2: Sheet "Births 2024": Row 1 has text only in B1 ("Births by region and age of mother, 2024"), but the rows below have up to 5 columns.
 #> ℹ If the header is lower down, give its row: `header = 5`, or the range: `range = "B5:F40"`.
 names(all)
-#> [1] "Summary"    "Sales 2023" "Sales 2024" "Regions"    "Notes"
+#> [1] "Summary"     "Births 2023" "Births 2024" "Regions"     "Notes"
 all[["Regions"]]
 #> # A tibble: 5 × 3
-#>   region  manager office
-#>   <chr>   <chr>   <chr>
-#> 1 North   Ana     Oslo
-#> 2 South   Ben     Lima
-#> 3 East    Chen    Pune
-#> 4 West    Dee     Accra
-#> 5 Central Eve     Kyiv
+#>   region  code  area_km2
+#>   <chr>   <chr>    <int>
+#> 1 North   N        48210
+#> 2 South   S        61375
+#> 3 East    E        39940
+#> 4 West    W        72068
+#> 5 Central C        21533
 ```
 
 It takes `read_xlsx()`'s arguments (except `sheet`) and uses them for
-every sheet. `sheets = c("Sales 2023", "Sales 2024")` reads some; a
-regular expression does too: `sheets = "^Sales"`. Each tibble keeps its
+every sheet. `sheets = c("Births 2023", "Births 2024")` reads some; a
+regular expression does too: `sheets = "^Births"`. Each tibble keeps its
 own `xlsx_problems()`. An empty sheet gives a tibble with no rows and
 no columns, as in `read_xlsx()`. To stack sheets with the same columns
 into one table, `dplyr::bind_rows(all, .id = "sheet")`.
@@ -632,10 +632,10 @@ A sheet name Excel does not allow stops before anything is written, and
 suggests one it does:
 
 ```r
-write_xlsx(list("Q1/Q2" = q, Q3 = q3), "quarters.xlsx")
+write_xlsx(list("2023/24" = births, Notes = notes), "years.xlsx")
 #> Error in `write_xlsx()`:
-#> ! Sheet name "Q1/Q2" has "/", which Excel does not allow in sheet names.
-#> ℹ Use another name, such as "Q1-Q2".
+#> ! Sheet name "2023/24" has "/", which Excel does not allow in sheet names.
+#> ℹ Use another name, such as "2023-24".
 ```
 
 Names longer than 31 characters, holding `[ ] : * ? \`, or the same as
@@ -657,8 +657,8 @@ and the columns left of it stay in view.
 
 ```r
 write_xlsx(
-  sales, "sales.xlsx",
-  formats = c(share = "0.0%", amount = "#,##0"),
+  births, "births.xlsx",
+  formats = c(women = "#,##0", births = "#,##0", asfr = "0.0"),
   filter = TRUE
 )
 ```
@@ -719,7 +719,7 @@ them for top, right, bottom, left), `align` (`"left"`, `"center"`,
 
 ```r
 write_xlsx(
-  sales, "styled.xlsx",
+  births, "styled.xlsx",
   styles = list(region = xl_style(bold = TRUE), "A12:F12" = xl_style(border = c(top = "thin")))
 )
 ```
@@ -730,10 +730,10 @@ not a column, or a `styles` key that is neither a column nor a range,
 stops before anything is written:
 
 ```r
-write_xlsx(sales, "sales.xlsx", formats = c(shar = "0.0%"))
+write_xlsx(births, "births.xlsx", formats = c(asf = "0.0"))
 #> Error in `write_xlsx()`:
-#> ! `formats` names `shar`, which is not a column of `sales`.
-#> ℹ Did you mean `share`?
+#> ! `formats` names `asf`, which is not a column of `births`.
+#> ℹ Did you mean `asfr`?
 ```
 
 ## Fill in an existing workbook

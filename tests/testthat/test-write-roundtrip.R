@@ -3,16 +3,16 @@
 # reads what write_xlsx() wrote as it reads the original.
 
 example_tables <- function() {
-  sales <- xlkit_example("sales.xlsx")
+  births <- xlkit_example("births.xlsx")
   messy <- xlkit_example("messy.xlsx")
   quiet <- function(...) suppressMessages(suppressWarnings(read_xlsx(...)))
   list(
     report = quiet(xlkit_example("report.xlsx")),
-    summary = quiet(sales, sheet = "Summary"),
-    sales_2023 = quiet(sales, sheet = "Sales 2023", header = 5),
-    sales_2024 = quiet(sales, sheet = "Sales 2024", range = "B5:F40"),
-    regions = quiet(sales, sheet = "Regions"),
-    notes = quiet(sales, sheet = "Notes"),
+    summary = quiet(births, sheet = "Summary"),
+    births_2023 = quiet(births, sheet = "Births 2023", header = 5),
+    births_2024 = quiet(births, sheet = "Births 2024", range = "B5:F40"),
+    regions = quiet(births, sheet = "Regions"),
+    notes = quiet(births, sheet = "Notes"),
     headers = quiet(messy, sheet = "Headers"),
     headers_snake = quiet(messy, sheet = "Headers", names = "snake"),
     two_row = quiet(messy, sheet = "Two-row header", header = 4:5),
@@ -81,9 +81,9 @@ test_that("readxl reads the written tables as it reads the originals", {
     write_xlsx(df, path)
     check(rx(xlkit_example(name)), rx(path))
   }
-  sales <- xlkit_example("sales.xlsx")
-  df <- read_xlsx(sales, sheet = "Sales 2024", range = "B5:F40")
+  births <- xlkit_example("births.xlsx")
+  df <- read_xlsx(births, sheet = "Births 2024", range = "B5:F40")
   path <- temp_xlsx()
-  write_xlsx(df, path, formats = c(share = "0.0%", amount = "#,##0"))
-  check(rx(sales, sheet = "Sales 2024", range = "B5:F40"), rx(path))
+  write_xlsx(df, path, formats = c(women = "#,##0", births = "#,##0", asfr = "0.0"))
+  check(rx(births, sheet = "Births 2024", range = "B5:F40"), rx(path))
 })

@@ -17,5 +17,5 @@ sheets are included; reading one is an error.
 The sheets of a workbook
 }
 \examples{
-xlsx_sheets(xlkit_example("sales.xlsx"))
+xlsx_sheets(xlkit_example("births.xlsx"))
 }

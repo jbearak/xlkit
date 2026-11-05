@@ -17,7 +17,7 @@ from 0 and sheets from 1. xlkit uses the numbers Excel shows: row 5 is
 | pandas | xlkit |
 |---|---|
 | `df = pd.read_excel("f.xlsx")` | `df <- read_xlsx("f.xlsx")` |
-| `pd.read_excel(p, sheet_name="Sales 2024")` | `read_xlsx(p, sheet = "Sales 2024")` |
+| `pd.read_excel(p, sheet_name="Births 2024")` | `read_xlsx(p, sheet = "Births 2024")` |
 | `pd.read_excel(p, sheet_name=2)` | `read_xlsx(p, sheet = 3)` |
 | `pd.ExcelFile(p).sheet_names` | `xlsx_sheets(p)` |
 | `pd.read_excel(p, header=4)` | `read_xlsx(p, header = 5)` |
@@ -56,7 +56,7 @@ in cells with `write_cells()`.
 | `wb = load_workbook(p, data_only=True)`, then `list(wb["Data"].values)` | `read_xlsx(p, sheet = "Data")` |
 | `wb.sheetnames` | `xlsx_sheets(p)` |
 | `wb["Data"]["B5:F40"]` | `read_xlsx(p, sheet = "Data", range = "B5:F40")` |
-| `wb["Data"].tables["Sales"].ref`, then slice the cells | `read_xlsx(p, range = "Sales")` |
+| `wb["Data"].tables["Births"].ref`, then slice the cells | `read_xlsx(p, range = "Births")` |
 | `ws["C4"] = 1250`, then `wb.save(p)` | `write_cells(p, sheet = "Cover", C4 = 1250)` |
 | `ws["B2"] = "=SUM(A1:A5)"` | `write_cells(p, sheet = "Cover", B2 = xl_formula("SUM(A1:A5)"))` |
 | `ws["C4"].number_format = "0.0%"` | `styles = list(C4 = xl_style(format = "0.0%"))` |
@@ -88,7 +88,7 @@ write_cells(
 | `pl.read_excel(p, sheet_name="Data")` | `read_xlsx(p, sheet = "Data")` |
 | `pl.read_excel(p, sheet_id=3)` | `read_xlsx(p, sheet = 3)` |
 | `pl.read_excel(p, sheet_id=0)` | `read_sheets(p)` |
-| `pl.read_excel(p, table_name="Sales")` | `read_xlsx(p, range = "Sales")` |
+| `pl.read_excel(p, table_name="Births")` | `read_xlsx(p, range = "Births")` |
 | `pl.read_excel(p, read_options={"header_row": 4, "use_columns": "B:F", "n_rows": 35})` | `read_xlsx(p, range = "B5:F40")` |
 | `pl.read_excel(p, has_header=False)` | `read_xlsx(p, header = FALSE)` |
 | `pl.read_excel(p, schema_overrides={"zip": pl.String})` | `read_xlsx(p, types = c(zip = "text"))` |

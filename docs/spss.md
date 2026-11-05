@@ -17,26 +17,26 @@ the data frame they write.
 ```spss
 GET DATA
   /TYPE=XLSX
-  /FILE='sales.xlsx'
-  /SHEET=NAME 'Sales 2024'
+  /FILE='births.xlsx'
+  /SHEET=NAME 'Births 2024'
   /CELLRANGE=RANGE 'B5:F40'
   /READNAMES=ON.
 ```
 
 ```r
-sales <- read_xlsx("sales.xlsx", sheet = "Sales 2024", range = "B5:F40")
+births <- read_xlsx("births.xlsx", sheet = "Births 2024", range = "B5:F40")
 ```
 
 | SPSS | xlkit |
 |---|---|
 | `GET DATA /TYPE=XLSX /FILE='f.xlsx' /READNAMES=ON.` | `df <- read_xlsx("f.xlsx")` |
-| `/SHEET=NAME 'Sales 2024'` | `sheet = "Sales 2024"` |
+| `/SHEET=NAME 'Births 2024'` | `sheet = "Births 2024"` |
 | `/SHEET=INDEX 3` | `sheet = 3` |
 | `/CELLRANGE=RANGE 'B5:F40'` | `range = "B5:F40"` |
 | `/CELLRANGE=FULL` | nothing: the default reads the sheet's data |
 | `/READNAMES=OFF` | `header = FALSE`: columns are named by their letters, `A`, `B`, ... |
 | `/ASSUMEDSTRWIDTH=255` | nothing: R's text has no width, so nothing is cut |
-| `DATASET NAME sales.` | the variable `sales` |
+| `DATASET NAME births.` | the variable `births` |
 
 SPSS makes each header into a valid variable name. `names = "snake"`
 does the same in R's style, `Share %` becoming `share_percent`, and

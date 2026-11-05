@@ -72,9 +72,9 @@
 #' @examples
 #' read_xlsx(xlkit_example("report.xlsx"))
 #'
-#' path <- xlkit_example("sales.xlsx")
-#' read_xlsx(path, sheet = "Sales 2024", range = "B5:F40")
-#' read_xlsx(path, sheet = "Sales 2024", header = 5)
+#' path <- xlkit_example("births.xlsx")
+#' read_xlsx(path, sheet = "Births 2024", range = "B5:F40")
+#' read_xlsx(path, sheet = "Births 2024", header = 5)
 #'
 #' path <- xlkit_example("messy.xlsx")
 #' read_xlsx(path, sheet = "Two-row header", header = 4:5)

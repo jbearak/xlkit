@@ -17,7 +17,7 @@ Stata keeps one dataset in memory, and R keeps as many as you name, so
 |---|---|
 | `import excel using "f.xlsx", clear` | `df <- read_xlsx("f.xlsx", header = FALSE)` |
 | `import excel using "f.xlsx", firstrow clear` | `df <- read_xlsx("f.xlsx", names = "stata")` |
-| `..., sheet("Sales 2024")` | `sheet = "Sales 2024"` |
+| `..., sheet("Births 2024")` | `sheet = "Births 2024"` |
 | `..., cellrange(B5:F40)` | `range = "B5:F40"` |
 | `..., cellrange(B5)` | `range = "B5"` (from B5 to the last row and column with data) |
 | `..., firstrow case(lower)` | `names = c("stata", "lower")` |

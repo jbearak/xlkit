@@ -456,12 +456,12 @@ mod tests {
     #[test]
     fn tables_and_defined_names() {
         let path = format!(
-            "{}/../../inst/extdata/sales.xlsx",
+            "{}/../../inst/extdata/births.xlsx",
             env!("CARGO_MANIFEST_DIR")
         );
         let named = names(&path).unwrap();
-        let table = named.iter().find(|n| n.name == "SalesTable").unwrap();
-        assert_eq!(table.sheet, "Sales 2024");
+        let table = named.iter().find(|n| n.name == "BirthsTable").unwrap();
+        assert_eq!(table.sheet, "Births 2024");
         assert_eq!(table.dims, [5, 2, 40, 6, 1]);
         let regions = named.iter().find(|n| n.name == "RegionList").unwrap();
         assert_eq!(regions.formula, "Regions!$A$1:$C$6");

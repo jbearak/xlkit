@@ -11,7 +11,7 @@ read_sheets(path, sheets = NULL, ...)
 
 \item{sheets}{\code{NULL} for every worksheet; a vector of sheet names or
 positions; or one regular expression matched against the names, such
-as \code{"^Sales"}. A name that is not a sheet, or an expression that
+as \code{"^Births"}. A name that is not a sheet, or an expression that
 matches none, is an error.}
 
 \item{...}{Arguments for \code{\link[=read_xlsx]{read_xlsx()}}, except \code{sheet}.}
@@ -30,7 +30,7 @@ Chart sheets are skipped (naming one in \code{sheets} is an error, as in
 table, use \code{dplyr::bind_rows(all, .id = "sheet")}.
 }
 \examples{
-all <- read_sheets(xlkit_example("sales.xlsx"))
+all <- read_sheets(xlkit_example("births.xlsx"))
 names(all)
-read_sheets(xlkit_example("sales.xlsx"), sheets = "^Sales", header = 5)
+read_sheets(xlkit_example("births.xlsx"), sheets = "^Births", header = 5)
 }
